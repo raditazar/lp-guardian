@@ -820,6 +820,107 @@
   outline-offset: 3px !important;
 }
 
+.landing-theme .wallet-menu {
+  width:         min(320px, calc(100vw - 32px)) !important;
+  padding:       16px !important;
+  border:        3px solid var(--lp-ink-hard) !important;
+  border-radius: 18px !important;
+  background:    oklch(0.97 0.01 250) !important;
+  color:         oklch(0.12 0.02 260) !important;
+  box-shadow:    6px 6px 0 var(--lp-ink-hard) !important;
+}
+
+.landing-theme .wallet-menu::before {
+  content:       '';
+  position:      absolute;
+  top:           -10px;
+  right:         28px;
+  width:         16px;
+  height:        16px;
+  background:    oklch(0.97 0.01 250);
+  border-left:   3px solid var(--lp-ink-hard);
+  border-top:    3px solid var(--lp-ink-hard);
+  transform:     rotate(45deg);
+}
+
+.landing-theme .wallet-menu-label {
+  font-family:    var(--font-display);
+  font-size:      13px;
+  line-height:    1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.landing-theme .wallet-menu-address {
+  margin-top:    12px;
+  padding:       10px 12px;
+  border:        2px solid var(--lp-ink-hard);
+  border-radius: 10px;
+  background:    oklch(0.21 0.11 267);
+  color:         var(--lp-lime);
+  font-family:   var(--font-mono);
+  font-size:     11px;
+  font-weight:   800;
+  line-height:   1.45;
+  word-break:    break-all;
+}
+
+.landing-theme .wallet-menu-grid {
+  display:               grid;
+  grid-template-columns: 72px 1fr;
+  gap:                   8px 12px;
+  margin-top:            14px;
+  font-family:           var(--font-mono);
+  font-size:             11px;
+  line-height:           1.3;
+}
+
+.landing-theme .wallet-menu-grid span {
+  color:          oklch(0.30 0.06 260);
+  text-transform: uppercase;
+  font-weight:    800;
+}
+
+.landing-theme .wallet-menu-grid strong {
+  min-width:   0;
+  color:       oklch(0.12 0.02 260);
+  font-weight: 900;
+}
+
+.landing-theme .wallet-menu-actions {
+  display: grid;
+  gap:     8px;
+  margin-top: 16px;
+}
+
+.landing-theme .wallet-menu-action {
+  width:          100%;
+  min-height:     36px;
+  border:         2px solid var(--lp-ink-hard);
+  border-radius:  10px;
+  background:     var(--lp-char-cyan);
+  color:          oklch(0.12 0.02 260);
+  box-shadow:     3px 3px 0 var(--lp-ink-hard);
+  font-family:    var(--font-display);
+  font-size:      11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:     box-shadow 80ms linear, transform 80ms linear, background 100ms;
+}
+
+.landing-theme .wallet-menu-action:hover {
+  background: var(--lp-lime);
+}
+
+.landing-theme .wallet-menu-action:active {
+  transform:  translate(3px, 3px);
+  box-shadow: none;
+}
+
+.landing-theme .wallet-menu-action-danger {
+  background: oklch(0.72 0.20 15);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════════════════════ */

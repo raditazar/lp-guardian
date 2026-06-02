@@ -79,6 +79,14 @@ export function Landing() {
           </div>
         </div>
 
+        {/* Side mascots — absolute gutters, hidden <1024px via lp-mascot-side CSS */}
+        <div className="lp-mascot-side lp-mascot-side-left">
+          <Mascot n={2} size={180} bob />
+        </div>
+        <div className="lp-mascot-side lp-mascot-side-right">
+          <Mascot n={3} size={180} />
+        </div>
+
         {/* Scroll cue */}
         <div className="lp-scroll-cue">
           <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--lp-ink-ghost)", fontSize: 10 }}>
@@ -304,6 +312,9 @@ export function Landing() {
               preview, TEE verdict synthesis with hallucination guard, 0G
               Storage upload, and on-chain anchoring with agent memory updates.
             </p>
+            <div style={{ marginTop: 32 }}>
+              <Mascot n={5} size={130} />
+            </div>
           </div>
 
           <WindowPanel title="diagnose.stream">
@@ -419,6 +430,9 @@ export function Landing() {
               Three counters that move on chain per agent action, plus a
               licensing primitive that splits revenue automatically.
             </p>
+            <div style={{ marginTop: 32 }}>
+              <Mascot n={6} size={150} bob />
+            </div>
           </div>
 
           <div style={{ position: "relative" }}>
@@ -475,25 +489,28 @@ export function Landing() {
       <section style={{ padding: "100px 36px", position: "relative", overflow: "hidden" }}>
         <div className="lp-grid-bg" style={{ opacity: 0.5 }} />
         <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative", zIndex: 1 }}>
-          <div style={{ marginBottom: 64 }}>
-            <Cap>METHOD · 3 PHASES</Cap>
-            <h2
-              style={{
-                margin: "10px 0 14px",
-                fontFamily: "var(--font-display)",
-                fontSize: "clamp(2rem, 4.5vw, 3.6rem)",
-                textTransform: "uppercase",
-                lineHeight: 1.0,
-                textWrap: "balance",
-                color: "var(--lp-ink)",
-              }}
-            >
-              A lens, not a dashboard.
-            </h2>
-            <p style={{ margin: 0, maxWidth: 560, color: "var(--lp-ink-soft)", fontSize: 15, lineHeight: 1.65 }}>
-              Every position ships with a signed, reproducible diagnosis. You
-              keep the verdict; your keys never leave your wallet.
-            </p>
+          <div style={{ marginBottom: 64, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
+            <div>
+              <Cap>METHOD · 3 PHASES</Cap>
+              <h2
+                style={{
+                  margin: "10px 0 14px",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "clamp(2rem, 4.5vw, 3.6rem)",
+                  textTransform: "uppercase",
+                  lineHeight: 1.0,
+                  textWrap: "balance",
+                  color: "var(--lp-ink)",
+                }}
+              >
+                A lens, not a dashboard.
+              </h2>
+              <p style={{ margin: 0, maxWidth: 560, color: "var(--lp-ink-soft)", fontSize: 15, lineHeight: 1.65 }}>
+                Every position ships with a signed, reproducible diagnosis. You
+                keep the verdict; your keys never leave your wallet.
+              </p>
+            </div>
+            <Mascot n={4} size={170} style={{ flexShrink: 0, marginTop: 8 }} />
           </div>
 
           <div className="lp-timeline">
@@ -588,25 +605,28 @@ export function Landing() {
       {/* ── 8b · Five anchors — numbered manifesto ────────────────────── */}
       <section style={{ padding: "100px 36px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ marginBottom: 60 }}>
-            <Cap>FIVE ANCHORS</Cap>
-            <h2
-              style={{
-                margin: "10px 0 14px",
-                fontFamily: "var(--font-display)",
-                fontSize: "clamp(2rem, 4.5vw, 3.6rem)",
-                textTransform: "uppercase",
-                lineHeight: 1.0,
-                textWrap: "balance",
-                color: "var(--lp-ink)",
-              }}
-            >
-              Five design choices that hold the project up.
-            </h2>
-            <p style={{ margin: 0, maxWidth: 640, color: "var(--lp-ink-soft)", fontSize: 15, lineHeight: 1.65 }}>
-              Each one is a deliberate constraint that&apos;s verifiable in the code or
-              on chain. Take any one away and the trust story collapses.
-            </p>
+          <div style={{ marginBottom: 60, display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 32 }}>
+            <div>
+              <Cap>FIVE ANCHORS</Cap>
+              <h2
+                style={{
+                  margin: "10px 0 14px",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "clamp(2rem, 4.5vw, 3.6rem)",
+                  textTransform: "uppercase",
+                  lineHeight: 1.0,
+                  textWrap: "balance",
+                  color: "var(--lp-ink)",
+                }}
+              >
+                Five design choices that hold the project up.
+              </h2>
+              <p style={{ margin: 0, maxWidth: 640, color: "var(--lp-ink-soft)", fontSize: 15, lineHeight: 1.65 }}>
+                Each one is a deliberate constraint that&apos;s verifiable in the code or
+                on chain. Take any one away and the trust story collapses.
+              </p>
+            </div>
+            <Mascot n={7} size={160} style={{ flexShrink: 0 }} />
           </div>
 
           <div>
@@ -654,7 +674,7 @@ export function Landing() {
         <div style={{ maxWidth: 860, margin: "0 auto", position: "relative", zIndex: 1 }}>
           {/* Anchor mascot above CTA */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-            <MascotPlaceholder mascot="anchor" size={100} bob />
+            <Mascot n={1} size={200} bob />
           </div>
           <div className="lp-speech-bubble" data-tail="tl" style={{ display: "inline-block", marginBottom: 36, maxWidth: 400, textAlign: "left" }}>
             <p style={{ margin: 0 }}>Six demo wallets. Real chain data. No mocks.</p>
@@ -1122,25 +1142,27 @@ function LpPhaseRow({ n, name, label, animated }: { n: string; name: string; lab
   );
 }
 
-function MascotPlaceholder({
-  mascot,
-  size = 140,
+function Mascot({
+  n,
+  size = 120,
   bob = false,
+  style,
 }: {
-  mascot: "hodler" | "diagnoser" | "anchor";
+  n: number;
   size?: number;
   bob?: boolean;
+  style?: CSSProperties;
 }) {
-  const labels = { hodler: "H", diagnoser: "D", anchor: "A" };
   return (
-    <div
-      className={bob ? "lp-mascot lp-mascot-bob" : "lp-mascot"}
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
+    <img
+      src={`/mascots/mascot${n}.webp`}
+      width={size}
+      height={size}
+      className={bob ? "lp-mascot-bob" : undefined}
+      style={{ display: "block", objectFit: "contain", ...style }}
       role="presentation"
       aria-hidden
-    >
-      {labels[mascot]}
-    </div>
+    />
   );
 }
 

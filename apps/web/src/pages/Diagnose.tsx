@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader.js";
 import { ILPanel, type ILBreakdown } from "../components/ILPanel.js";
@@ -50,13 +51,13 @@ interface ResolvedPositionOutput {
 
 const PHASES = [
   { phase: 1, code: "position.resolve", label: "Resolve position" },
-  { phase: 3, code: "il.reconstruct", label: "Compute IL" },
-  { phase: 4, code: "regime.classify", label: "Classify regime" },
-  { phase: 5, code: "hooks.discover", label: "Discover hooks" },
-  { phase: 6, code: "hook.score", label: "Replay hooks" },
-  { phase: 7, code: "migration.preview", label: "Build migration" },
-  { phase: 8, code: "report.upload", label: "Upload report" },
-  { phase: 9, code: "anchor.0g", label: "Anchor root" },
+  { phase: 3, code: "il.reconstruct",   label: "Compute IL" },
+  { phase: 4, code: "regime.classify",  label: "Classify regime" },
+  { phase: 5, code: "hooks.discover",   label: "Discover hooks" },
+  { phase: 6, code: "hook.score",       label: "Replay hooks" },
+  { phase: 7, code: "migration.preview",label: "Build migration" },
+  { phase: 8, code: "report.upload",    label: "Upload report" },
+  { phase: 9, code: "anchor.0g",        label: "Anchor root" },
   { phase: 10, code: "verdict.synthesize", label: "TEE verdict" },
 ];
 
@@ -128,18 +129,15 @@ export function Diagnose() {
     (e): e is Extract<DiagnosticEvent, { type: "error" }> => e.type === "error",
   );
 
-  const resolved = pickToolResult<ResolvedPositionOutput>(events, "getV3Position");
+  const resolved  = pickToolResult<ResolvedPositionOutput>(events, "getV3Position");
   const ilBreakdown = pickToolResult<ILBreakdown>(events, "computeIL");
-  const regime = pickToolResult<RegimeClassification>(events, "classifyRegime");
-  const hooks = pickToolResult<HookDiscoveryResult>(events, "discoverV4Hooks");
-  const migration = pickToolResult<MigrationPreview>(
-    events,
-    "buildMigrationPreview",
-  );
+  const regime    = pickToolResult<RegimeClassification>(events, "classifyRegime");
+  const hooks     = pickToolResult<HookDiscoveryResult>(events, "discoverV4Hooks");
+  const migration = pickToolResult<MigrationPreview>(events, "buildMigrationPreview");
   const provenance = pickReportUploaded(events);
-  const anchor = pickReportAnchored(events);
-  const verdict = pickVerdict(events);
-  const scoring = pickToolResult<HookScoringResult>(events, "scoreHook");
+  const anchor    = pickReportAnchored(events);
+  const verdict   = pickVerdict(events);
+  const scoring   = pickToolResult<HookScoringResult>(events, "scoreHook");
 
   const provenanceFullyVerified =
     provenance !== null &&
@@ -152,118 +150,129 @@ export function Diagnose() {
 
   const labels = useMemo(() => {
     const out: Label[] = [];
-    if (resolved) out.push("VERIFIED");
+    if (resolved)   out.push("VERIFIED");
     if (ilBreakdown) out.push("COMPUTED");
-    if (regime) out.push("ESTIMATED");
-    if (hooks) out.push("LABELED");
-    if (migration) out.push("EMULATED");
+    if (regime)     out.push("ESTIMATED");
+    if (hooks)      out.push("LABELED");
+    if (migration)  out.push("EMULATED");
     if (provenance) out.push(provenanceFullyVerified ? "VERIFIED" : "EMULATED");
-    if (verdict) out.push(verdict.stub ? "EMULATED" : "ESTIMATED");
+    if (verdict)    out.push(verdict.stub ? "EMULATED" : "ESTIMATED");
     return out;
-  }, [
-    resolved,
-    ilBreakdown,
-    regime,
-    hooks,
-    migration,
-    provenance,
-    provenanceFullyVerified,
-    verdict,
-  ]);
+  }, [resolved, ilBreakdown, regime, hooks, migration, provenance, provenanceFullyVerified, verdict]);
 
-  const completed = PHASES.filter((p) => phaseState(events, p.phase) === "complete").length;
+  const completed  = PHASES.filter((p) => phaseState(events, p.phase) === "complete").length;
   const activePhase = PHASES.find((p) => phaseState(events, p.phase) === "active");
-  const latestTool = toolEvents[toolEvents.length - 1];
-  const hasEvidence =
-    ilBreakdown || regime || hooks || scoring || migration || provenance || verdict;
+  const hasEvidence = !!(ilBreakdown || regime || hooks || scoring || migration || provenance || verdict);
+
+  const bubbleText = useMemo(() => {
+    if (error) return "Stream dropped. Check the backend.";
+    if (streamErrors.length > 0) return `Phase ${completed + 1} failed. Check logs.`;
+    if (status === "closed" && verdict) {
+      return provenanceFullyVerified
+        ? `${PHASES.length} of ${PHASES.length}. Anchored.`
+        : `${completed} of ${PHASES.length}. Verdict ready.`;
+    }
+    if (status === "open" && activePhase) {
+      const step = PHASES.findIndex((p) => p.phase === activePhase.phase) + 1;
+      return `Running phase ${step}: ${activePhase.label}.`;
+    }
+    if (status === "open") return "Opening secure stream...";
+    return "Paste a position id to begin.";
+  }, [error, streamErrors.length, completed, status, verdict, provenanceFullyVerified, activePhase]);
 
   return (
-    <div className="diagnose-theme">
-      <div className="diagnose-grid-bg" aria-hidden />
+    <div className="diagnose-theme" data-stream={status}>
       <AppHeader />
+      <div className="diagnose-shell">
 
-      <main className="diagnose-shell">
-        <header className="diagnose-command">
-          <div className="diagnose-command-main">
-            <div className="diagnose-kicker">
-              <span className="diagnose-pixel-dot" aria-hidden />
-              <span>DIAGNOSE STREAM</span>
-            </div>
-            <h1>Live diagnosis for token {tokenId ?? "missing"}.</h1>
-            <p>
-              Watch LP Guardian resolve the position, compute IL, replay hook
-              alternatives, build a migration preview, and publish a verifiable
-              report.
-            </p>
-            <div className="diagnose-meta-row">
-              <span>tokenId <strong>{tokenId ?? "missing"}</strong></span>
-              <span>status <strong>{statusLabel(status, error)}</strong></span>
-              {resolved && <span>pair <strong>{resolved.pair}</strong></span>}
-              {latestTool && (
+        {/* Band 1 — Hero */}
+        <header className="diagnose-hero">
+          <div className="diagnose-hero-content">
+            <div className="diagnose-kicker">PHASE STREAM</div>
+            <h1 className="diagnose-h1">DIAGNOSING</h1>
+            {tokenId && (
+              <div className="diagnose-token-chip">TOKEN #{tokenId}</div>
+            )}
+            <div className="diagnose-meta">
+              <span>
+                <span className="diagnose-meta-key">status </span>
+                {statusLabel(status, error)}
+              </span>
+              {resolved && (
                 <span>
-                  latest tool <strong>{latestTool.tool}</strong>
+                  <span className="diagnose-meta-key">pair </span>
+                  {resolved.pair}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="diagnose-score-window">
-            <WindowBar title="STREAM SCOREBOARD" />
-            <div className="diagnose-score-body">
-              <Score label="events" value={String(events.length)} />
-              <Score label="phases" value={`${completed}/${PHASES.length}`} />
-              <Score label="tools" value={String(toolEvents.length)} />
+          <div className="diagnose-hero-right">
+            <DiagnoserMascot status={status} />
+            <div className="lp-speech-bubble diagnose-bubble" data-tail="tl">
+              {bubbleText}
             </div>
-            <div className="diagnose-active-line">
-              {activePhase ? activePhase.code : status === "error" ? "stream.error" : "awaiting next frame"}
+            <div className="diagnose-scoreboard">
+              <div className="diagnose-score">
+                <strong>{events.length}</strong>
+                <span>EVENTS</span>
+              </div>
+              <div className="diagnose-score">
+                <strong>{completed}/{PHASES.length}</strong>
+                <span>PHASES</span>
+              </div>
+              <div className="diagnose-score">
+                <strong>{toolEvents.length}</strong>
+                <span>TOOLS</span>
+              </div>
             </div>
           </div>
         </header>
 
-        <section className="diagnose-phase-window" aria-label="Diagnostic phase progress">
-          <WindowBar title="PHASE TIMELINE" />
-          <div className="diagnose-phase-grid">
+        {/* Band 2 — Phase timeline */}
+        <section className="diagnose-timeline" aria-label="Diagnostic phase progress">
+          <h2 className="diagnose-section-label">PHASE TIMELINE</h2>
+          <div className="diagnose-phase-list">
             {PHASES.map((p, i) => (
-              <PhaseChip
+              <PhasePill
                 key={p.phase}
-                code={p.code}
-                label={p.label}
-                phase={p.phase}
                 step={i + 1}
+                label={p.label}
+                code={p.code}
                 state={phaseState(events, p.phase)}
               />
             ))}
           </div>
         </section>
 
-        <div className="diagnose-layout">
-          <section className="diagnose-panel-list" aria-label="Diagnostic evidence panels">
-            {streamErrors.length > 0 && (
-              <StateWindow
-                title="PHASE ERROR"
+        {/* Band 3 — Main grid */}
+        <div className="diagnose-grid">
+          <section className="diagnose-evidence" aria-label="Diagnostic evidence panels">
+            {error && (
+              <StateCard
                 tone="error"
+                title="STREAM ERROR"
+                body={`${error}. Frontend reachable but SSE backend dropped the run.`}
+              />
+            )}
+            {streamErrors.length > 0 && (
+              <StateCard
+                tone="error"
+                title="PHASE ERROR"
                 body={streamErrors[streamErrors.length - 1]?.message ?? "A diagnostic phase failed."}
               />
             )}
-            {error && (
-              <StateWindow
-                title="STREAM ERROR"
-                tone="error"
-                body={`${error}. The frontend is reachable, but the SSE backend or proxy did not finish the run.`}
-              />
-            )}
             {!hasEvidence && !error && (
-              <StateWindow
-                title={status === "open" ? "WAITING FOR EVIDENCE" : "STREAM READY"}
+              <StateCard
                 tone="idle"
+                title={status === "open" ? "WAITING FOR EVIDENCE" : "STREAM READY"}
                 body={
                   status === "open"
-                    ? "The EventSource is open. Evidence panels will land here as tool results arrive."
+                    ? "EventSource open. Evidence panels land here as tool results arrive."
                     : "Open a tokenId route to start a live diagnostic stream."
                 }
               />
             )}
-
             {ilBreakdown && (
               <ILPanel breakdown={ilBreakdown} token1Symbol={token1Symbol} />
             )}
@@ -280,35 +289,41 @@ export function Diagnose() {
           </section>
 
           <aside className="diagnose-rail" aria-label="Live stream rail">
-            <section className="diagnose-rail-window">
-              <WindowBar title="HONESTY LABELS" />
-              <div className="diagnose-label-stack">
+            <RailCard title="HONESTY LABELS">
+              <div className="diagnose-badge-stack">
                 {labels.length === 0 ? (
-                  <span className="diagnose-muted">labels appear as evidence lands</span>
+                  <span className="diagnose-muted">
+                    Labels appear as evidence lands.
+                  </span>
                 ) : (
-                  labels.map((label, i) => <LabelBadge key={`${label}-${i}`} label={label} />)
-                )}
-              </div>
-            </section>
-
-            <section className="diagnose-rail-window">
-              <WindowBar title="TOOL CALL STACK" />
-              <div className="diagnose-tool-stack">
-                {toolEvents.length === 0 ? (
-                  <span className="diagnose-muted">no tool calls yet</span>
-                ) : (
-                  toolEvents.map((ev, i) => (
-                    <ToolCallBadge key={`${ev.type}-${ev.tool}-${i}`} event={ev} />
+                  labels.map((label, i) => (
+                    <LabelBadge key={`${label}-${i}`} label={label} />
                   ))
                 )}
               </div>
-            </section>
+            </RailCard>
 
-            <section className="diagnose-rail-window">
-              <WindowBar title="NARRATIVE" />
-              <div className="diagnose-narrative-stack">
+            <RailCard title="TOOL CALL STACK">
+              <div className="diagnose-tool-scroll">
+                {toolEvents.length === 0 ? (
+                  <span className="diagnose-muted">No tool calls yet.</span>
+                ) : (
+                  toolEvents.map((ev, i) => (
+                    <ToolCallBadge
+                      key={`${ev.type}-${ev.tool}-${i}`}
+                      event={ev}
+                    />
+                  ))
+                )}
+              </div>
+            </RailCard>
+
+            <RailCard title="NARRATIVE">
+              <div className="diagnose-narrative-scroll">
                 {narratives.length === 0 ? (
-                  <span className="diagnose-muted">waiting for narrative...</span>
+                  <span className="diagnose-muted">
+                    Agent will narrate as phases complete.
+                  </span>
                 ) : (
                   narratives.map((n, i) =>
                     i === narratives.length - 1 ? (
@@ -321,72 +336,118 @@ export function Diagnose() {
                   )
                 )}
               </div>
-            </section>
+            </RailCard>
 
             {provenance?.rootHash && (
-              <section className="diagnose-rail-window">
-                <WindowBar title="REPORT ROOT" />
-                <div className="diagnose-root-hash" title={provenance.rootHash}>
-                  {compactHash(provenance.rootHash)}
+              <RailCard title="REPORT ROOT">
+                <div className="diagnose-root-hash-area">
+                  <code
+                    className="diagnose-root-hash-mono"
+                    title={provenance.rootHash}
+                  >
+                    {compactHash(provenance.rootHash)}
+                  </code>
+                  <CopyButton text={provenance.rootHash} />
                 </div>
-              </section>
+              </RailCard>
             )}
           </aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
 
-function WindowBar({ title }: { title: string }) {
+/* ── Local components ────────────────────────────────────────── */
+
+function DiagnoserMascot({ status }: { status: string }) {
+  const isOpen = status === "open";
   return (
-    <div className="diagnose-window-bar">
-      <span className="diagnose-window-dot diagnose-window-dot-red" />
-      <span className="diagnose-window-dot diagnose-window-dot-yellow" />
-      <span className="diagnose-window-dot diagnose-window-dot-green" />
-      <span className="diagnose-window-title">{title}</span>
-    </div>
+    <svg
+      className={`diagnose-mascot${isOpen ? " lp-mascot-bob" : ""}`}
+      viewBox="0 0 120 170"
+      aria-label={`Diagnoser mascot: ${status}`}
+      role="img"
+      fill="none"
+    >
+      {/* Left arm */}
+      <rect x="4" y="90" width="12" height="40" rx="6"
+        fill="oklch(0.68 0.18 230)" stroke="oklch(0.12 0.02 260)" strokeWidth="3" />
+      {/* Right arm */}
+      <rect x="104" y="90" width="12" height="40" rx="6"
+        fill="oklch(0.68 0.18 230)" stroke="oklch(0.12 0.02 260)" strokeWidth="3" />
+      {/* Body */}
+      <path d="M22 90 L98 90 L104 150 L16 150 Z"
+        fill="oklch(0.68 0.18 230)" stroke="oklch(0.12 0.02 260)"
+        strokeWidth="3" strokeLinejoin="round" />
+      {/* Lab coat chest panel */}
+      <path d="M44 90 L76 90 L80 140 L40 140 Z"
+        fill="oklch(0.97 0.01 250)" stroke="oklch(0.12 0.02 260)"
+        strokeWidth="2" strokeLinejoin="round" />
+      {/* Head */}
+      <circle cx="60" cy="52" r="44"
+        fill="oklch(0.68 0.18 230)" stroke="oklch(0.12 0.02 260)" strokeWidth="3" />
+      {/* Highlight crescent */}
+      <ellipse cx="40" cy="33" rx="18" ry="14" fill="oklch(0.82 0.14 220)" />
+      {/* Shadow crescent */}
+      <ellipse cx="78" cy="68" rx="12" ry="9" fill="oklch(0.52 0.16 235)" />
+      {/* Left eye */}
+      <circle cx="44" cy="50" r="8" fill="oklch(0.12 0.02 260)" />
+      <circle cx="47" cy="47" r="3" fill="white" />
+      {/* Right eye */}
+      <circle cx="76" cy="50" r="8" fill="oklch(0.12 0.02 260)" />
+      <circle cx="79" cy="47" r="3" fill="white" />
+      {/* Stethoscope */}
+      <path
+        className="diagnose-stethoscope"
+        d="M56 90 Q58 108 68 116 Q78 124 80 136 Q82 148 70 150 Q60 152 60 140"
+        stroke="oklch(0.92 0.22 130)"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+      />
+      {/* Pool icon — two overlapping circles at stethoscope end */}
+      <circle cx="53" cy="144" r="7"
+        fill="oklch(0.24 0.10 265)" stroke="oklch(0.92 0.22 130)" strokeWidth="2" />
+      <circle cx="63" cy="144" r="7"
+        fill="oklch(0.24 0.10 265)" stroke="oklch(0.92 0.22 130)" strokeWidth="2" />
+    </svg>
   );
 }
 
-function Score({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function PhaseChip({
-  phase,
+function PhasePill({
   step,
-  code,
   label,
+  code,
   state,
 }: {
-  phase: number;
   step: number;
-  code: string;
   label: string;
+  code: string;
   state: PhaseState;
 }) {
   return (
     <div
-      className={`diagnose-phase-chip diagnose-phase-chip-${state}`}
-      title={`backend phase ${phase}`}
+      className={`diagnose-phase-pill diagnose-phase-pill--${state}`}
+      aria-current={state === "active" ? "step" : undefined}
+      title={`phase code: ${code}`}
     >
-      <span className="diagnose-phase-index">{String(step).padStart(2, "0")}</span>
-      <span className="diagnose-phase-copy">
-        <strong>{code}</strong>
-        <span>{label}</span>
-      </span>
-      <span className="diagnose-phase-state">{state}</span>
+      <span className="diagnose-pill-num">{String(step).padStart(2, "0")}</span>
+      <span className="diagnose-pill-label">{label.toUpperCase()}</span>
+      <span className="diagnose-pill-status">{state}</span>
     </div>
   );
 }
 
-function StateWindow({
+function RailCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="diagnose-rail-card">
+      <h2 className="diagnose-rail-title">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function StateCard({
   title,
   body,
   tone,
@@ -396,11 +457,24 @@ function StateWindow({
   tone: "idle" | "error";
 }) {
   return (
-    <section className={`diagnose-state-window diagnose-state-window-${tone}`}>
-      <WindowBar title={title} />
-      <p>
-        <span>&gt;</span> {body}
-      </p>
-    </section>
+    <div className={`diagnose-state-card diagnose-state-card--${tone}`}>
+      <span className="diagnose-state-title">{title}</span>
+      <p className="diagnose-state-body">{body}</p>
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+  return (
+    <button className="lp-btn-ghost diagnose-copy-btn" onClick={handleCopy}>
+      {copied ? "COPIED" : "COPY"}
+    </button>
   );
 }

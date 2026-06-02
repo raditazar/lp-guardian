@@ -1,0 +1,49 @@
+# Deps
+node_modules/
+.pnp
+.pnp.js
+.yarn-integrity
+
+# Builds
+dist/
+build/
+out/
+.next/
+.turbo/
+coverage/
+
+# Envs
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System
+.DS_Store
+.vscode/
+.idea/
+
+# Foundry
+cache/
+artifacts/
+
+AI_ATTRIBUTION.md
+
+# TS incremental build info
+*.tsbuildinfo
+
+# Playwright test artifacts
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/screenshots/
+
+# Foundry deps (forge install)
+.gitmodules
+contracts/lib/
+contracts/foundry.lock
