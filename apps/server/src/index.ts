@@ -1,11 +1,14 @@
 import {serve} from "@hono/node-server"
-import {app} from "./app.js";
+import {createApp} from "./app.js";
+import {loadConfig} from "./config.js";
 
-const port = Number(process.env.PORT) || 3001;
+const config = loadConfig();
+const app = createApp(config);
+
 serve(
     {
         fetch: app.fetch,
-        port,
+        port: config.port,
     },
     (info) => {
         console.log(`LP Guardian server listening on http://localhost:${info.port}`);

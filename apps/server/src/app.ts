@@ -1,11 +1,9 @@
 import {Hono} from "hono";
+import type {ServerConfig} from "./config.js";
+import {createHealthRoute} from "./routes/health.js";
 
-export const app = new Hono();
-
-app.get("/health", (c) => {
-    return c.json({
-        status: "ok",
-        service: "lp-guardian-server",
-        env: process.env.NODE_ENV ?? "development",
-    })
-})
+export function createApp(config: ServerConfig): Hono{
+    const app = new Hono();
+    app.route("/health", createHealthRoute(config));
+    return app;
+}
