@@ -1,11 +1,11 @@
 import {Hono} from "hono";
-import {runMockFoundationAgents} from "../../services/agentOrchestrator.js";
+import type {AgentRuntime} from "../../services/agentRunTimme.js";
 
-export function createMockAgentRunRoute(): Hono{
+export function createMockAgentRunRoute(runtime: AgentRuntime): Hono{
     const route = new Hono();
 
     route.get("/", (c) =>{
-        const result = runMockFoundationAgents();
+        const result = runtime.runFoundationDemo();
 
         return c.json({
             status: "ok",
