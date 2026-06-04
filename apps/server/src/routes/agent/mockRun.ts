@@ -1,5 +1,5 @@
 import {Hono} from "hono";
-import type {AgentRuntime} from "../../services/agentRunTimme.js";
+import type {AgentRuntime} from "../../services/agentRunTime.js";
 
 export function createMockAgentRunRoute(runtime: AgentRuntime): Hono{
     const route = new Hono();
