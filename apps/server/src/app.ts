@@ -1,6 +1,6 @@
 import {Hono} from "hono";
 import type {ServerConfig} from "./config.js";
-import {createAgentRuntime} from "./services/agentRunTimme.js";
+import {createAgentRuntime} from "./services/agentRunTime.js";
 import {createHealthRoute} from "./routes/health.js";
 import {createMockAgentRunRoute} from "./routes/agent/mockRun.js";
 
