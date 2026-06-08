@@ -19,7 +19,7 @@ function readGitTag(): string {
 }
 
 // TODO(robinhood): update DEFAULT_API_BASE_URL after backend is deployed
-const DEFAULT_API_BASE_URL = "";
+const DEFAULT_API_BASE_URL = "http://localhost:3001";
 
 function resolveApiBaseUrl(mode: string): string {
   const env = loadEnv(mode, "../../", "");
@@ -29,9 +29,6 @@ function resolveApiBaseUrl(mode: string): string {
     DEFAULT_API_BASE_URL;
   const trimmed = raw.trim();
   if (!trimmed) return DEFAULT_API_BASE_URL;
-  if (trimmed.includes("localhost:3001")) {
-    return DEFAULT_API_BASE_URL;
-  }
   return trimmed.replace(/\/+$/, "");
 }
 
