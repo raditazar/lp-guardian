@@ -9,6 +9,7 @@ export interface ApiError {
     code: string;
     message: string;
     issues?: unknown;
+    requestId?: string;
   };
 }
 
@@ -23,6 +24,7 @@ export function fail(
   code: string,
   message: string,
   issues?: unknown,
+  requestId?: string,
 ): ApiError {
   return {
     status: "error",
@@ -30,6 +32,7 @@ export function fail(
       code,
       message,
       issues,
+      requestId,
     },
   };
 }

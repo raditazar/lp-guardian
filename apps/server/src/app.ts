@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ServerConfig } from "./config.js";
+import { errorHandler, notFoundHandler } from "./http/handlers.js";
 import { requestContext } from "./middleware/requestContext.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { createAgentRuntime } from "./services/agentRuntime/index.js";
@@ -19,6 +20,9 @@ export function createApp(config: ServerConfig): Hono {
   app.route("/agent/mock-run", createMockAgentRunRoute(agentRuntime));
   app.route("/api/diagnose", createDiagnoseRoute());
   app.route("/api/positions", createPositionsRoute());
+
+  app.notFound(notFoundHandler);
+  app.onError(errorHandler);
 
   return app;
 }
