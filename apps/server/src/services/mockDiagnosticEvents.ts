@@ -1,13 +1,29 @@
 import type { DiagnosticEvent } from "@lp-guardian/core";
+import type { FoundationRunRequest } from "../schemas/agent.js";
+import type { StrategistAdvice } from "./agentRuntime/types.js";
 
-export function createMockDiagnosticEvents(tokenId: string): DiagnosticEvent[] {
+interface MockDiagnosticOptions {
+  input: FoundationRunRequest;
+  advice: StrategistAdvice;
+  runtimeProvider: string;
+}
+
+export function createMockDiagnosticEvents(
+  tokenId: string,
+  options: MockDiagnosticOptions,
+): DiagnosticEvent[] {
   const pair = "ETH/USDC";
   const hookAddress = "0x1111111111111111111111111111111111111111";
   const poolId = "0xpool-mock-eth-usdc";
+  const { advice, input, runtimeProvider } = options;
 
   return [
     { type: "phase.start", phase: 1, label: "Resolve position" },
-    { type: "tool.call", tool: "getV3Position", input: { tokenId } },
+    {
+      type: "tool.call",
+      tool: "getV3Position",
+      input: { tokenId, walletAddress: input.walletAddress },
+    },
     {
       type: "tool.result",
       tool: "getV3Position",
@@ -193,14 +209,41 @@ export function createMockDiagnosticEvents(tokenId: string): DiagnosticEvent[] {
     { type: "phase.start", phase: 10, label: "TEE verdict" },
     {
       type: "verdict.final",
-      markdown:
-        "**Hold off on blind rebalancing.** Your pool is trending, IL is outrunning fees, and the safest demo action is a wider-range migration preview. Execute remains user-approved only.",
+      markdown: createVerdictMarkdown(advice),
       labels: {
-        model: "mock-strategist-v0",
-        provider: "stub",
-        label: "EMULATED",
+        model: `${runtimeProvider}-strategist-v0`,
+        provider: runtimeProvider,
+        label: advice.attestationLabel,
+        recommendation: advice.recommendation,
+        confidence: String(advice.confidence),
       },
     },
     { type: "phase.end", phase: 10, durationMs: 74 },
   ];
+}
+
+function createVerdictMarkdown(advice: StrategistAdvice): string {
+  const action = verdictActionText(advice.recommendation);
+
+  return [
+    `**${action}**`,
+    advice.rationale,
+    `Confidence: ${(advice.confidence * 100).toFixed(0)}%.`,
+    "Execute remains user-approved only.",
+  ].join(" ");
+}
+
+function verdictActionText(
+  recommendation: StrategistAdvice["recommendation"],
+): string {
+  switch (recommendation) {
+    case "migrate":
+      return "Prepare a migration preview.";
+    case "rebalance":
+      return "Prepare a rebalance proposal.";
+    case "hold":
+      return "Hold the current position.";
+    case "monitor":
+      return "Monitor before taking action.";
+  }
 }

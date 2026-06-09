@@ -20,7 +20,7 @@ export function createApp(config: ServerConfig): Hono {
   app.route("/health", createHealthRoute(config));
   app.route("/agent/runtime", createAgentRuntimeRoute(config));
   app.route("/agent/mock-run", createMockAgentRunRoute(agentRuntime));
-  app.route("/api/diagnose", createDiagnoseRoute());
+  app.route("/api/diagnose", createDiagnoseRoute(agentRuntime));
   app.route("/api/positions", createPositionsRoute());
 
   app.notFound(notFoundHandler);

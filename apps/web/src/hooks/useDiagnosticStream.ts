@@ -18,7 +18,10 @@ function isSuccessfulTerminal(events: DiagnosticEvent[]): boolean {
 
 // Subscribes to the backend diagnose SSE endpoint and accumulates the typed
 // DiagnosticEvent stream. The hook auto-closes on unmount.
-export function useDiagnosticStream(tokenId: string | null): State {
+export function useDiagnosticStream(
+  tokenId: string | null,
+  walletAddress?: string,
+): State {
   const [state, setState] = useState<State>({ events: [], status: "idle" });
   const eventsRef = useRef<DiagnosticEvent[]>([]);
   const explicitErrorRef = useRef<string | undefined>(undefined);
@@ -31,7 +34,10 @@ export function useDiagnosticStream(tokenId: string | null): State {
       return;
     }
 
-    const url = `${API_BASE_URL}/api/diagnose/${tokenId}`;
+    const params = new URLSearchParams();
+    if (walletAddress) params.set("walletAddress", walletAddress);
+    const query = params.toString();
+    const url = `${API_BASE_URL}/api/diagnose/${tokenId}${query ? `?${query}` : ""}`;
     const es = new EventSource(url);
     setState({ events: [], status: "open" });
     eventsRef.current = [];
@@ -88,7 +94,7 @@ export function useDiagnosticStream(tokenId: string | null): State {
     return () => {
       es.close();
     };
-  }, [tokenId]);
+  }, [tokenId, walletAddress]);
 
   return state;
 }

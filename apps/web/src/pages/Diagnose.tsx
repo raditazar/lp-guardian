@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
+import { useAccount } from "wagmi";
 import { AppHeader } from "../components/AppHeader.js";
 import { ILPanel, type ILBreakdown } from "../components/ILPanel.js";
 import {
@@ -116,7 +117,11 @@ function compactHash(value: string): string {
 
 export function Diagnose() {
   const { tokenId } = useParams<{ tokenId: string }>();
-  const { events, status, error } = useDiagnosticStream(tokenId ?? null);
+  const { address } = useAccount();
+  const { events, status, error } = useDiagnosticStream(
+    tokenId ?? null,
+    address,
+  );
 
   const toolEvents = events.filter(
     (e): e is ToolEvent => e.type === "tool.call" || e.type === "tool.result",
