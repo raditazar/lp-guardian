@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "pnpm --filter @lp-guardian/web dev",
     "build": "pnpm --filter @lp-guardian/web build",
-    "dev:web": "pnpm --filter @lp-guardian/web dev"
+    "dev:web": "pnpm --filter @lp-guardian/web dev",
+    "dev:server": "pnpm --filter @lp-guardian/server dev",
+    "build:server": "pnpm --filter @lp-guardian/server build",
+    "typecheck:server": "pnpm --filter @lp-guardian/server typecheck"
   },
   "engines": {
     "node": ">=20.0.0",

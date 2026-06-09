@@ -5,5 +5,5 @@ test("server /health responds with ok status", async ({ request }) => {
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   expect(body.status).toBe("ok");
-  expect(body.service).toBe("lpguardian-server");
+  expect(body.data.service).toBe("lp-guardian-server");
 });
