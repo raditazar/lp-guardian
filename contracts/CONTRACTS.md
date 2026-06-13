@@ -4,12 +4,13 @@ This document explains the purpose, external interface, and integration flow for
 
 ## Contract Overview
 
-LP Guardian uses two Rust contracts compiled with Arbitrum Stylus for Robinhood Chain Testnet:
+LP Guardian uses Rust contracts compiled with Arbitrum Stylus for Robinhood Chain Testnet:
 
 | Contract | Purpose | Current Address |
 | --- | --- | --- |
 | `PortfolioReportRegistry` | Stores verifiable report anchors keyed by `rootHash` | `0x9803be5349eedf7c28ac1914b743757ce043b7cc` |
 | `PortfolioRiskEngine` | Computes deterministic portfolio risk scores from aggregate LP metrics | `0x8d21329ac9d7785333cb41e187e556a8f7b81ec0` |
+| `SwapReplayVerifier` | Anchors Phala TEE replay proofs for 1,000-swap counterfactual simulations | `0x75191d7ca10ea9c36b88b169896d4f258702afa2` |
 
 The contracts are intentionally small. Heavy portfolio indexing, LP position reconstruction, report generation, and attestation payload construction should happen off-chain. The contracts preserve the parts that benefit from on-chain verifiability: report provenance and deterministic risk scoring.
 
@@ -214,6 +215,129 @@ A typical LP Guardian backend integration should use both contracts together:
 
 This keeps the on-chain surface compact while making the important outputs independently verifiable.
 
+## SwapReplayVerifier
+
+`SwapReplayVerifier` anchors the result of a computation-heavy swap replay. The backend scans recent pool swaps, compresses the input batch, and sends the replay job to a Phala TEE. The TEE computes the full counterfactual P&L off-chain, while this contract stores the proof metadata that lets another system verify the same replay payload was used.
+
+This contract is not an execution router and never moves user funds. It is a replay provenance and spot-check layer.
+
+### Data Model
+
+Each replay proof is keyed by `bytes32 replayId`, computed from the replay metadata and hashes.
+
+Stored fields:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `publisher` | `address` | Address that submitted the replay proof |
+| `timestamp` | `uint256` | Block timestamp when the proof was published |
+| `portfolioOwner` | `address` | Wallet or portfolio owner being analyzed |
+| `subjectId` | `uint256` | App-defined portfolio, position, or strategy identifier |
+| `pool` | `address` | Pool whose swaps were replayed |
+| `fromBlock` | `uint256` | First block included in the replay window |
+| `toBlock` | `uint256` | Last block included in the replay window |
+| `swapCount` | `uint256` | Number of compressed swaps in the replay, capped at `1000` |
+| `inputRoot` | `bytes32` | Hash/root of the canonical compressed swap batch |
+| `resultHash` | `bytes32` | Hash of the canonical replay result |
+| `attestationHash` | `bytes32` | Hash of the Phala TDX quote or attestation payload |
+| `teeImageHash` | `bytes32` | Hash of the attestor code/image identity |
+
+### Functions
+
+#### `publishReplay(...)`
+
+Publishes one replay proof and returns its deterministic `replayId`.
+
+```solidity
+function publishReplay(
+    address portfolio_owner,
+    uint256 subject_id,
+    address pool,
+    uint64 from_block,
+    uint64 to_block,
+    uint32 swap_count,
+    bytes32 input_root,
+    bytes32 result_hash,
+    bytes32 attestation_hash,
+    bytes32 tee_image_hash
+) external returns (bytes32);
+```
+
+Validation:
+
+| Condition | Error |
+| --- | --- |
+| `portfolio_owner == address(0)` | `ZeroPortfolioOwner()` |
+| `pool == address(0)` | `ZeroPool()` |
+| `from_block > to_block` | `InvalidBlockRange(uint64,uint64)` |
+| `swap_count == 0 || swap_count > 1000` | `InvalidSwapCount(uint32)` |
+| `input_root == bytes32(0)` | `EmptyInputRoot()` |
+| `result_hash == bytes32(0)` | `EmptyResultHash()` |
+| `attestation_hash == bytes32(0)` | `EmptyAttestationHash()` |
+| `replayId` already exists | `AlreadyPublished(bytes32)` |
+
+#### `getReplay(bytes32 replay_id)`
+
+Returns the stored replay proof metadata.
+
+Return order:
+
+```solidity
+(
+  address publisher,
+  uint256 timestamp,
+  address portfolioOwner,
+  uint256 subjectId,
+  address pool,
+  uint256 fromBlock,
+  uint256 toBlock,
+  uint256 swapCount,
+  bytes32 inputRoot,
+  bytes32 resultHash,
+  bytes32 attestationHash,
+  bytes32 teeImageHash
+)
+```
+
+#### `replayCount(uint256 subject_id)` and `replayAt(uint256 subject_id, uint256 index)`
+
+List replay proofs associated with a portfolio subject.
+
+#### `computeReplayId(...)`
+
+Recomputes the deterministic replay ID off-chain clients should expect from `publishReplay`.
+
+#### `computeFee(uint256 amount_in, uint32 fee_pips)`
+
+Small deterministic spot-check helper for Uniswap-style fee pips where `1_000_000` equals 100%.
+
+Example:
+
+```bash
+cast call --rpc-url "$ROBINHOOD_RPC" \
+  0x75191d7ca10ea9c36b88b169896d4f258702afa2 \
+  "computeFee(uint256,uint32)(uint256,uint256)" \
+  1000000 \
+  3000
+```
+
+Expected output:
+
+```text
+997000
+3000
+```
+
+### Intended Integration Flow
+
+1. Backend scans the last 1,000 swaps for a pool.
+2. Backend canonicalizes swaps into a compressed batch and computes `inputRoot`.
+3. Phala TEE runs the full replay and emits canonical replay output.
+4. Backend computes `resultHash`, `attestationHash`, and `teeImageHash`.
+5. Backend calls `publishReplay(...)`.
+6. The final report references `replayId`, `inputRoot`, `resultHash`, and the publish transaction.
+7. Frontend can label replay output as TEE-anchored when report fields match `getReplay(replayId)`.
+
 ## Security And Operational Notes
 
 - The registry is append-only by root hash. There is no update or delete path.
@@ -222,6 +346,7 @@ This keeps the on-chain surface compact while making the important outputs indep
 - If production requires only trusted publishers, add an owner/admin or allowlist before mainnet use.
 - `PortfolioRiskEngine` is stateless and read-only. It does not depend on block timestamp, caller, or external contracts.
 - The risk engine trusts the aggregate metrics passed into it. Data correctness must be enforced by the backend, indexer, or future attestation layer.
+- `SwapReplayVerifier` trusts the off-chain compressed swap batch and TEE output hashes. It proves provenance, not raw event correctness.
 - The current contracts are suitable for hackathon proof-of-integration and testnet demos. Production use should add access control, events, richer metadata, and an upgrade or migration strategy.
 
 ## Deployed Robinhood Testnet Addresses
@@ -230,5 +355,6 @@ This keeps the on-chain surface compact while making the important outputs indep
 | --- | --- |
 | `PortfolioReportRegistry` | `0x9803be5349eedf7c28ac1914b743757ce043b7cc` |
 | `PortfolioRiskEngine` | `0x8d21329ac9d7785333cb41e187e556a8f7b81ec0` |
+| `SwapReplayVerifier` | `0x75191d7ca10ea9c36b88b169896d4f258702afa2` |
 
 See `deployments/robinhood-testnet.json` for deploy transactions, activation transactions, and smoke test outputs.
