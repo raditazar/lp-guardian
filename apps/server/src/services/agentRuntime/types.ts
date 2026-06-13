@@ -1,5 +1,5 @@
 import type { AgentMessage, AgentRun } from "@lp-guardian/core";
-import type { FoundationRunRequest } from "../../schemas/agent.js";
+import type { FoundationRunRequest, StrategistAdvice } from "../../schemas/agent.js";
 
 export type AgentRuntimeProvider = "mock" | "eliza";
 
@@ -14,22 +14,7 @@ export interface AgentRuntime {
   runFoundation(input?: FoundationRunRequest): Promise<AgentRuntimeResult>;
 }
 
-export interface StrategistAdvice {
-  recommendation: "hold" | "rebalance" | "migrate" | "monitor";
-  rationale: string;
-  confidence: number;
-  attestationLabel: "EMULATED" | "VERIFIED";
-  source: {
-    provider: "mock" | "eliza" | "phala";
-    label: "EMULATED" | "VERIFIED";
-    modelProvider?: "gemini" | "phala" | "deterministic";
-    modelName?: string;
-    modelBacked?: boolean;
-    actionName?: string;
-    actionText?: string;
-    callbackText?: string;
-  };
-}
+export { type StrategistAdvice };
 
 export interface StrategistAdapter {
   readonly provider: "mock" | "eliza" | "phala";

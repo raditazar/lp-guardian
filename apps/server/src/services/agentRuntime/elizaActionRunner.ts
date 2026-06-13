@@ -9,16 +9,19 @@ import {
 } from "@elizaos/core";
 import { randomUUID } from "node:crypto";
 import { SUMMARIZE_LP_RISK_ACTION } from "../../agent/plugins/lpg-plugin/action.js";
-import type { FoundationRunRequest } from "../../schemas/agent.js";
+import {
+  strategistAdviceSchema,
+  type FoundationRunRequest,
+} from "../../schemas/agent.js";
 import type { StrategistAdvice } from "./types.js";
 
 export interface ElizaActionAdvice extends StrategistAdvice {
   source: {
     provider: "eliza";
-      label: "EMULATED";
-      modelProvider: "gemini" | "deterministic";
-      modelName: string;
-      modelBacked: boolean;
+    label: "EMULATED";
+    modelProvider: "gemini" | "deterministic";
+    modelName: string;
+    modelBacked: boolean;
     actionName: string;
     actionText?: string;
     callbackText?: string;
@@ -65,7 +68,7 @@ export async function runElizaSummarizeLpRiskAction(
     );
   }
 
-  return {
+  const advice = {
     recommendation: readRecommendation(result.values?.recommendation),
     rationale:
       result.text ??
@@ -84,6 +87,8 @@ export async function runElizaSummarizeLpRiskAction(
       callbackText: callbackContent?.text,
     },
   };
+
+  return strategistAdviceSchema.parse(advice) as ElizaActionAdvice;
 }
 
 function createActionMessage(

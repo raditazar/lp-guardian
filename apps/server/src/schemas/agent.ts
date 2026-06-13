@@ -9,6 +9,28 @@ export const foundationScenarioSchema = z.enum([
   "tee-unavailable",
 ]);
 
+/**
+ * Strict schema for strategist advice to ensure provenance and consistency.
+ */
+export const strategistAdviceSchema = z.object({
+  recommendation: z.enum(["hold", "rebalance", "migrate", "monitor"]),
+  rationale: z.string().min(5, "Rationale is too short"),
+  confidence: z.number().min(0).max(1),
+  attestationLabel: z.enum(["EMULATED", "VERIFIED"]),
+  source: z.object({
+    provider: z.enum(["mock", "eliza", "phala"]),
+    label: z.enum(["EMULATED", "VERIFIED"]),
+    modelProvider: z.enum(["gemini", "phala", "deterministic"]).optional(),
+    modelName: z.string().optional(),
+    modelBacked: z.boolean().optional(),
+    actionName: z.string().optional(),
+    actionText: z.string().optional(),
+    callbackText: z.string().optional(),
+  }),
+});
+
+export type StrategistAdvice = z.infer<typeof strategistAdviceSchema>;
+
 export const foundationRunRequestSchema = z.object({
   walletAddress: z
     .string()

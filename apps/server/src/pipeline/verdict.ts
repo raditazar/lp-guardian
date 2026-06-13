@@ -54,18 +54,24 @@ export async function synthesizeVerdict(
   const deterministic = buildDeterministicVerdict(i);
 
   if (config.phalaApiUrl) {
-    const resp = await requestPhalaVerdict(config, i);
-    if (resp && resp.attested && resp.quote) {
-      return {
-        markdown: resp.markdown || deterministic.markdown,
-        recommendation:
-          asRecommendation(resp.recommendation) ?? deterministic.recommendation,
-        model: "lp-guardian-tee-strategist-v0",
-        provider: "phala-dstack",
-        stub: false,
-        label: "VERIFIED",
-        attestationQuote: resp.quote,
-      };
+    try {
+      const resp = await requestPhalaVerdict(config, i);
+      if (resp && resp.attested && resp.quote) {
+        return {
+          markdown: resp.markdown || deterministic.markdown,
+          recommendation:
+            asRecommendation(resp.recommendation) ?? deterministic.recommendation,
+          model: "lp-guardian-tee-strategist-v0",
+          provider: "phala-dstack",
+          stub: false,
+          label: "VERIFIED",
+          attestationQuote: resp.quote,
+        };
+      }
+    } catch (err) {
+      console.warn(
+        `[verdict] Phala CVM request failed: ${String(err)}. Using deterministic verdict.`,
+      );
     }
     console.warn(
       "[verdict] Phala CVM unavailable or unattested; using deterministic verdict.",
