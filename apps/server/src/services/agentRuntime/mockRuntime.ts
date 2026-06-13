@@ -16,6 +16,7 @@ export class MockAgentRuntime implements AgentRuntime {
 
     return {
       ...result,
+      strategistAdvice: advice,
       messages: result.messages.map((message) => ({
         ...message,
         payload: mergePayload(message.payload, {

@@ -6,6 +6,7 @@ export type AgentRuntimeProvider = "mock" | "eliza";
 export interface AgentRuntimeResult {
   run: AgentRun;
   messages: AgentMessage[];
+  strategistAdvice?: StrategistAdvice;
 }
 
 export interface AgentRuntime {
