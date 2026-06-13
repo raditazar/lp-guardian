@@ -1,10 +1,9 @@
 import { loadLocalEnv } from "../config.js";
 import { ElizaAgentRuntime } from "../services/agentRuntime/elizaRuntime.js";
-import { MockStrategistAdapter } from "../services/agentRuntime/strategists.js";
 
 loadLocalEnv();
 
-const runtime = new ElizaAgentRuntime(new MockStrategistAdapter());
+const runtime = new ElizaAgentRuntime();
 const result = await runtime.runFoundation({
   walletAddress: "0x0000000000000000000000000000000000000000",
   scenario: "dust-and-correlation",
@@ -24,6 +23,8 @@ console.log(
       messageCount: result.messages.length,
       recommendation: result.strategistAdvice?.recommendation,
       attestationLabel: result.strategistAdvice?.attestationLabel,
+      strategistProvider: result.strategistAdvice?.source?.provider,
+      actionName: result.strategistAdvice?.source?.actionName,
       runtime: runtimeMetadata,
     },
     null,

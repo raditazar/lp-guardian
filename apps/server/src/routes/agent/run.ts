@@ -3,7 +3,7 @@ import { fail, ok } from "../../http/responses.js";
 import { foundationRunRequestSchema } from "../../schemas/agent.js";
 import type { AgentRuntime } from "../../services/agentRuntime/index.js";
 
-export function createAgentRunRoute(runtime: AgentRuntime): Hono {
+export function createAgentFoundationRunRoute(runtime: AgentRuntime): Hono {
   const route = new Hono();
 
   route.get("/", async (c) => {

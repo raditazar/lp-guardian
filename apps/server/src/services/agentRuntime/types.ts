@@ -19,9 +19,15 @@ export interface StrategistAdvice {
   rationale: string;
   confidence: number;
   attestationLabel: "EMULATED" | "VERIFIED";
+  source?: {
+    provider: "mock" | "eliza" | "phala";
+    actionName?: string;
+    actionText?: string;
+    callbackText?: string;
+  };
 }
 
 export interface StrategistAdapter {
-  readonly provider: "mock" | "phala";
+  readonly provider: "mock" | "eliza" | "phala";
   advise(input?: FoundationRunRequest): Promise<StrategistAdvice>;
 }

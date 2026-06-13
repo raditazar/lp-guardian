@@ -31,8 +31,8 @@ ElizaOS or Phala paths are ready.
 Run the selected agent runtime with:
 
 ```http
-GET /agent/run
-POST /agent/run
+GET /agent/foundation/run
+POST /agent/foundation/run
 Content-Type: application/json
 
 {
@@ -42,7 +42,7 @@ Content-Type: application/json
 ```
 
 When `AGENT_RUNTIME=eliza`, this endpoint initializes and uses the ElizaOS
-runtime bridge.
+runtime bridge and the `SUMMARIZE_LP_RISK` Eliza action for strategist advice.
 
 ## ElizaOS Runtime
 
@@ -63,15 +63,16 @@ Smoke test the runtime without starting the server:
 
 ```bash
 pnpm --filter @lp-guardian/server agent:smoke
+pnpm --filter @lp-guardian/server agent:test
 ```
 
 Current boundary:
 
 - Eliza runtime initialization and LP Guardian plugin registration are real.
 - The foundation-run envelope is server-native and labeled `mode: "eliza"`.
-- Strategy advice still comes from the configured `StrategistAdapter`.
-- Model-backed Eliza actions and Phala-verified strategist output are the next
-  integration steps.
+- Strategy advice comes from the configured `StrategistAdapter`; the default
+  Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action.
+- Phala-verified strategist output is the next attested integration step.
 
 ## Phala Plan
 

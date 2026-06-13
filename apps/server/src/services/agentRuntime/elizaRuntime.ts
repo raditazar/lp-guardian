@@ -3,6 +3,7 @@ import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import { createLpGuardianElizaRuntime } from "../../agent/runtime.js";
 import type { FoundationRunRequest } from "../../schemas/agent.js";
 import { runElizaFoundationAgents } from "../agentOrchestrator.js";
+import { ElizaStrategistAdapter } from "./strategists.js";
 import type {
   AgentRuntime,
   AgentRuntimeResult,
@@ -13,8 +14,12 @@ export class ElizaAgentRuntime implements AgentRuntime {
   readonly provider = "eliza" as const;
   private runtime: ElizaRuntime | null = null;
   private initializePromise: Promise<ElizaRuntime> | null = null;
+  private readonly strategist: StrategistAdapter;
 
-  constructor(private readonly strategist: StrategistAdapter) {}
+  constructor(strategist?: StrategistAdapter) {
+    this.strategist =
+      strategist ?? new ElizaStrategistAdapter(() => this.initialize());
+  }
 
   async initialize(): Promise<ElizaRuntime> {
     if (this.runtime) return this.runtime;

@@ -1,5 +1,7 @@
+import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import type { ServerConfig } from "../../config.js";
 import type { FoundationRunRequest } from "../../schemas/agent.js";
+import { runElizaSummarizeLpRiskAction } from "./elizaActionRunner.js";
 import type { StrategistAdapter, StrategistAdvice } from "./types.js";
 
 export class MockStrategistAdapter implements StrategistAdapter {
@@ -20,6 +22,16 @@ export class MockStrategistAdapter implements StrategistAdapter {
       confidence: scenario === "basic" ? 0.62 : 0.74,
       attestationLabel: "EMULATED",
     };
+  }
+}
+
+export class ElizaStrategistAdapter implements StrategistAdapter {
+  readonly provider = "eliza" as const;
+
+  constructor(private readonly getRuntime: () => Promise<ElizaRuntime>) {}
+
+  async advise(input?: FoundationRunRequest): Promise<StrategistAdvice> {
+    return runElizaSummarizeLpRiskAction(await this.getRuntime(), input);
   }
 }
 
