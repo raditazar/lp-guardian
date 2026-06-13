@@ -28,6 +28,22 @@ GET /agent/runtime
 The response shows the selected runtime, strategist provider, and whether the
 ElizaOS or Phala paths are ready.
 
+Run the selected agent runtime with:
+
+```http
+GET /agent/run
+POST /agent/run
+Content-Type: application/json
+
+{
+  "walletAddress": "0x0000000000000000000000000000000000000000",
+  "scenario": "dust-and-correlation"
+}
+```
+
+When `AGENT_RUNTIME=eliza`, this endpoint initializes and uses the ElizaOS
+runtime bridge.
+
 ## ElizaOS Runtime
 
 ElizaOS is installed in the server workspace and wired through

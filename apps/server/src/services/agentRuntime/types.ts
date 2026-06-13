@@ -11,7 +11,7 @@ export interface AgentRuntimeResult {
 
 export interface AgentRuntime {
   readonly provider: AgentRuntimeProvider;
-  runFoundationDemo(input?: FoundationRunRequest): Promise<AgentRuntimeResult>;
+  runFoundation(input?: FoundationRunRequest): Promise<AgentRuntimeResult>;
 }
 
 export interface StrategistAdvice {

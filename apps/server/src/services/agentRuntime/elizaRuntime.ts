@@ -25,7 +25,7 @@ export class ElizaAgentRuntime implements AgentRuntime {
     return this.runtime;
   }
 
-  async runFoundationDemo(
+  async runFoundation(
     input?: FoundationRunRequest,
   ): Promise<AgentRuntimeResult> {
     const runtime = await this.initialize();
