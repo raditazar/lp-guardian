@@ -13,6 +13,7 @@
     "smoke:robinhood-contracts": "tsx src/scripts/smokeRobinhoodContracts.ts"
   },
   "dependencies": {
+    "@elizaos/core": "2.0.0-alpha.77",
     "@hono/node-server": "^1.13.8",
     "@lp-guardian/core": "workspace:*",
     "dotenv": "^17.4.2",

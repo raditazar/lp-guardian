@@ -12,6 +12,7 @@ export interface RuntimeStatus {
 }
 
 export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
+  const elizaReady = Boolean(process.env.OPENAI_API_KEY);
   const robinhoodReady = Boolean(
     config.robinhoodRpcUrl &&
       config.robinhoodChainId &&
@@ -33,14 +34,15 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
   return {
     agentRuntime: config.agentRuntimeProvider,
     strategistProvider: config.strategistProvider,
-    elizaReady: false,
+    elizaReady,
     phalaReady,
     robinhoodReady,
     reportAnchoringReady,
     noMockDemoReady,
     notes: [
-      "ElizaOS is planned but not installed in this pnpm workspace.",
-      "Use an isolated Bun spike before wiring AGENT_RUNTIME=eliza.",
+      elizaReady
+        ? "ElizaOS runtime dependencies are installed and OPENAI_API_KEY is present."
+        : "ElizaOS runtime dependencies are installed; set OPENAI_API_KEY before using model-backed actions.",
       robinhoodReady
         ? "Robinhood real-data config is present."
         : "Robinhood real-data config needs RPC, chain ID, NFPM address, and risk engine address.",
