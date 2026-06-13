@@ -29,6 +29,10 @@ export interface ServerConfig {
   theGraphKey: string | null;
   coinGeckoApiKey: string | null;
 
+  // --- ElizaOS model provider ---
+  geminiApiKey: string | null;
+  geminiModel: string;
+
   // --- Deployed Stylus contracts (Robinhood Chain) ---
   reportRegistryAddress: `0x${string}`;
   riskEngineAddress: `0x${string}`;
@@ -137,6 +141,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
     coinGeckoApiKey: nonEmpty(env.COINGECKO_API_KEY),
+    geminiApiKey: nonEmpty(env.GEMINI_API_KEY),
+    geminiModel: nonEmpty(env.GEMINI_MODEL) ?? "gemini-3.5-flash",
 
     reportRegistryAddress: reportRegistry,
     riskEngineAddress: riskEngine,

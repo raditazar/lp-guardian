@@ -5,38 +5,55 @@ import { loadConfig, loadLocalEnv } from "../config.js";
 loadLocalEnv();
 process.env.AGENT_RUNTIME = "eliza";
 process.env.STRATEGIST_PROVIDER = "mock";
+process.env.GEMINI_MODEL = "gemini-3.5-flash";
 
 const app = createApp(loadConfig());
-const response = await app.request("/agent/foundation/run", {
-  method: "POST",
-  headers: {
-    "content-type": "application/json",
+
+const scenarios = [
+  { scenario: "basic", recommendation: "monitor" },
+  { scenario: "dust-and-correlation", recommendation: "migrate" },
+  { scenario: "tee-unavailable", recommendation: "monitor" },
+] as const;
+
+for (const item of scenarios) {
+  const response = await app.request("/agent/foundation/run", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      walletAddress: "0x0000000000000000000000000000000000000000",
+      scenario: item.scenario,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+
+  const body = await response.json();
+  const payload = body.data?.messages?.[0]?.payload;
+  const advice = body.data?.strategistAdvice;
+
+  assert.equal(payload?.mode, "eliza");
+  assert.equal(payload?.runtime?.provider, "eliza");
+  assert.equal(payload?.runtime?.character, "LP_Guardian_Agent");
+  assert.equal(payload?.strategist?.provider, "eliza");
+  assert.equal(advice?.recommendation, item.recommendation);
+  assert.equal(advice?.source?.provider, "eliza");
+  assert.equal(advice?.source?.label, "EMULATED");
+  assert.equal(advice?.source?.modelProvider, "gemini");
+  assert.equal(advice?.source?.modelName, "gemini-3.5-flash");
+  assert.equal(advice?.source?.actionName, "SUMMARIZE_LP_RISK");
+}
+
+console.log(JSON.stringify({
+  scenarios: scenarios.map((item) => item.scenario),
+  assertions: {
+    status: 200,
+    mode: "eliza",
+    runtimeProvider: "eliza",
+    strategistProvider: "eliza",
+    modelProvider: "gemini",
+    modelName: "gemini-3.5-flash",
+    actionName: "SUMMARIZE_LP_RISK",
   },
-  body: JSON.stringify({
-    walletAddress: "0x0000000000000000000000000000000000000000",
-    scenario: "dust-and-correlation",
-  }),
-});
-
-assert.equal(response.status, 200);
-
-const body = await response.json();
-const payload = body.data?.messages?.[0]?.payload;
-
-assert.equal(payload?.mode, "eliza");
-assert.equal(payload?.runtime?.provider, "eliza");
-assert.equal(payload?.runtime?.character, "LP_Guardian_Agent");
-assert.equal(payload?.strategist?.provider, "eliza");
-assert.equal(body.data?.strategistAdvice?.recommendation, "migrate");
-assert.equal(body.data?.strategistAdvice?.source?.provider, "eliza");
-assert.equal(body.data?.strategistAdvice?.source?.actionName, "SUMMARIZE_LP_RISK");
-
-console.log(
-  JSON.stringify({
-    status: response.status,
-    mode: payload?.mode,
-    runtimeProvider: payload?.runtime?.provider,
-    strategistProvider: payload?.strategist?.provider,
-    actionName: body.data?.strategistAdvice?.source?.actionName,
-  }),
-);
+}));

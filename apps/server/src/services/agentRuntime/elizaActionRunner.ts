@@ -15,6 +15,9 @@ import type { StrategistAdvice } from "./types.js";
 export interface ElizaActionAdvice extends StrategistAdvice {
   source: {
     provider: "eliza";
+    label: "EMULATED";
+    modelProvider: "gemini";
+    modelName: string;
     actionName: string;
     actionText?: string;
     callbackText?: string;
@@ -71,6 +74,9 @@ export async function runElizaSummarizeLpRiskAction(
     attestationLabel: readAttestationLabel(result.values?.attestationLabel),
     source: {
       provider: "eliza",
+      label: "EMULATED",
+      modelProvider: "gemini",
+      modelName: readRuntimeModel(runtime),
       actionName: action.name,
       actionText: result.text,
       callbackText: callbackContent?.text,
@@ -131,4 +137,13 @@ function readAttestationLabel(
   value: unknown,
 ): StrategistAdvice["attestationLabel"] {
   return value === "VERIFIED" ? "VERIFIED" : "EMULATED";
+}
+
+function readRuntimeModel(runtime: ElizaRuntime): string {
+  const settings = runtime.character.settings as
+    | { model?: unknown }
+    | undefined;
+  return typeof settings?.model === "string" && settings.model.length > 0
+    ? settings.model
+    : "gemini-3.5-flash";
 }

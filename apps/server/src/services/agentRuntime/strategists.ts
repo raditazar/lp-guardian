@@ -18,9 +18,15 @@ export class MockStrategistAdapter implements StrategistAdapter {
           ? "TEE strategist unavailable; using deterministic fallback advice."
           : scenario === "dust-and-correlation"
             ? "Dust and correlation risks are present; migration preview is the safest next step."
-          : "Mock strategist recommends monitoring unless dust and correlation risks are present.",
+            : "Mock strategist recommends monitoring unless dust and correlation risks are present.",
       confidence: scenario === "basic" ? 0.62 : 0.74,
       attestationLabel: "EMULATED",
+      source: {
+        provider: "mock",
+        label: "EMULATED",
+        modelProvider: "deterministic",
+        modelName: "mock-strategist-v0",
+      },
     };
   }
 }

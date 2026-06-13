@@ -56,7 +56,8 @@ Use it with:
 ```env
 AGENT_RUNTIME=eliza
 STRATEGIST_PROVIDER=mock
-OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.5-flash
 ```
 
 Smoke test the runtime without starting the server:
@@ -71,7 +72,8 @@ Current boundary:
 - Eliza runtime initialization and LP Guardian plugin registration are real.
 - The foundation-run envelope is server-native and labeled `mode: "eliza"`.
 - Strategy advice comes from the configured `StrategistAdapter`; the default
-  Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action.
+  Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action and
+  labels its model source as Gemini.
 - Phala-verified strategist output is the next attested integration step.
 
 ## Phala Plan

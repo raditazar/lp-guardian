@@ -22,7 +22,7 @@ export function createApp(config: ServerConfig): Hono {
   app.route("/health", createHealthRoute(config));
   app.route("/agent/runtime", createAgentRuntimeRoute(config));
   app.route("/agent/foundation/run", createAgentFoundationRunRoute(agentRuntime));
-  app.route("/api/diagnose", createDiagnoseRoute(config));
+  app.route("/api/diagnose", createDiagnoseRoute(config, agentRuntime));
   app.route("/api/positions", createPositionsRoute(config));
   app.route("/api/report", createReportRoute(config));
   app.route("/api/portfolio", createPortfolioRoute(config));

@@ -18,6 +18,12 @@ import { uploadReport } from "../storage/index.js";
 import { updateAnchor } from "../storage/reportStore.js";
 import { anchorReport } from "../chain/reportRegistry.js";
 import type { AssembledReportPayload } from "./reportTypes.js";
+import type { FoundationRunRequest } from "../schemas/agent.js";
+import type {
+  AgentRuntime,
+  StrategistAdvice,
+} from "../services/agentRuntime/index.js";
+import type { VerdictResult } from "./verdict.js";
 
 const REGIME_WINDOW_HOURS = 72;
 
@@ -33,6 +39,7 @@ function sleep(ms: number): Promise<void> {
 export async function* runDiagnosticPipeline(
   config: ServerConfig,
   tokenId: string,
+  options: DiagnosticPipelineOptions = {},
 ): AsyncGenerator<DiagnosticEvent> {
   // ---- Phase 1: resolve position ----
   yield { type: "phase.start", phase: 1, label: "Resolve position" };
@@ -200,6 +207,36 @@ export async function* runDiagnosticPipeline(
     regime,
     hookScore,
   });
+  const agentAdvice =
+    config.agentRuntimeProvider === "eliza" && options.agentRuntime
+      ? await options.agentRuntime.runFoundation(options.foundationInput)
+      : undefined;
+  const strategistAdvice = agentAdvice?.strategistAdvice;
+  const finalVerdict = strategistAdvice
+    ? applyStrategistAdvice(verdict, strategistAdvice)
+    : verdict;
+
+  if (strategistAdvice) {
+    yield {
+      type: "agent.advice",
+      provider: strategistAdvice.source.provider,
+      recommendation: strategistAdvice.recommendation,
+      confidence: strategistAdvice.confidence,
+      rationale: strategistAdvice.rationale,
+      labels: {
+        label: strategistAdvice.attestationLabel,
+        sourceProvider: strategistAdvice.source.provider,
+        sourceLabel: strategistAdvice.source.label,
+        modelProvider: strategistAdvice.source.modelProvider ?? "",
+        modelName: strategistAdvice.source.modelName ?? "",
+        actionName: strategistAdvice.source.actionName ?? "",
+      },
+    };
+    yield {
+      type: "narrative",
+      text: `ElizaOS strategist recommends ${strategistAdvice.recommendation}: ${strategistAdvice.rationale}`,
+    };
+  }
 
   // ---- Phase 8: upload report ----
   yield { type: "phase.start", phase: 8, label: "Upload report" };
@@ -213,7 +250,8 @@ export async function* runDiagnosticPipeline(
     regime,
     hooks,
     migration,
-    verdict,
+    verdict: finalVerdict,
+    strategistAdvice,
   });
   const upload = await uploadReport(config, payload);
   yield {
@@ -259,15 +297,24 @@ export async function* runDiagnosticPipeline(
   yield { type: "phase.start", phase: 10, label: "TEE verdict" };
   yield {
     type: "verdict.final",
-    markdown: verdict.markdown,
+    markdown: finalVerdict.markdown,
     labels: {
-      model: verdict.model,
-      provider: verdict.provider,
-      label: verdict.label,
-      stub: String(verdict.stub),
+      model: finalVerdict.model,
+      provider: finalVerdict.provider,
+      label: finalVerdict.label,
+      stub: String(finalVerdict.stub),
+      strategistProvider: strategistAdvice?.source.provider ?? "",
+      strategistModelProvider: strategistAdvice?.source.modelProvider ?? "",
+      strategistModel: strategistAdvice?.source.modelName ?? "",
+      strategistAction: strategistAdvice?.source.actionName ?? "",
     },
   };
   yield { type: "phase.end", phase: 10, durationMs: 20 };
+}
+
+interface DiagnosticPipelineOptions {
+  agentRuntime?: AgentRuntime;
+  foundationInput?: FoundationRunRequest;
 }
 
 interface PayloadInputs {
@@ -280,6 +327,7 @@ interface PayloadInputs {
   hooks: ReturnType<typeof discoverHooks>;
   migration: ReturnType<typeof buildMigrationPreview>;
   verdict: Awaited<ReturnType<typeof synthesizeVerdict>>;
+  strategistAdvice?: StrategistAdvice;
 }
 
 function buildPayload(i: PayloadInputs): AssembledReportPayload {
@@ -326,6 +374,46 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
         : undefined,
       warnings: i.migration.warnings,
     },
+    strategistAdvice: i.strategistAdvice
+      ? {
+          recommendation: i.strategistAdvice.recommendation,
+          rationale: i.strategistAdvice.rationale,
+          confidence: i.strategistAdvice.confidence,
+          attestationLabel: i.strategistAdvice.attestationLabel,
+          source: {
+            provider: i.strategistAdvice.source.provider,
+            label: i.strategistAdvice.source.label,
+            modelProvider: i.strategistAdvice.source.modelProvider,
+            modelName: i.strategistAdvice.source.modelName,
+            actionName: i.strategistAdvice.source.actionName,
+          },
+        }
+      : undefined,
+  };
+}
+
+function applyStrategistAdvice(
+  verdict: VerdictResult,
+  advice: StrategistAdvice,
+): VerdictResult {
+  return {
+    ...verdict,
+    recommendation: advice.recommendation,
+    markdown: [
+      `**${advice.recommendation.toUpperCase()}** - ${advice.rationale}`,
+      "",
+      `_Strategist source: ${advice.source.provider}${
+        advice.source.actionName ? `/${advice.source.actionName}` : ""
+      }; model: ${advice.source.modelProvider ?? "unknown"}/${
+        advice.source.modelName ?? "unknown"
+      }; label: ${advice.attestationLabel}._`,
+      "",
+      verdict.markdown,
+    ].join("\n"),
+    model: advice.source.modelName ?? verdict.model,
+    provider: advice.source.provider,
+    stub: advice.attestationLabel !== "VERIFIED",
+    label: advice.attestationLabel,
   };
 }
 

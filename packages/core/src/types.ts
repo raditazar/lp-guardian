@@ -72,6 +72,14 @@ export type DiagnosticEvent =
   | { type: "node.add"; nodeType: string; id: string; data: unknown }
   | { type: "edge.draw"; from: string; to: string; kind: string }
   | { type: "edge.pulse"; from: string; to: string }
+  | {
+      type: "agent.advice";
+      provider: string;
+      recommendation: string;
+      confidence: number;
+      rationale: string;
+      labels: Record<string, string>;
+    }
   | { type: "verdict.partial"; markdown: string }
   | { type: "verdict.final"; markdown: string; labels: Record<string, string> }
   | { type: "report.uploaded"; rootHash: string; storageUrl: string }

@@ -29,4 +29,8 @@ export function createAgentRuntime(config: ServerConfig): AgentRuntime {
   return new MockAgentRuntime(strategist);
 }
 
-export type { AgentRuntime, AgentRuntimeProvider };
+export type {
+  AgentRuntime,
+  AgentRuntimeProvider,
+  StrategistAdvice,
+} from "./types.js";

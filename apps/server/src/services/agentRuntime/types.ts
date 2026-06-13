@@ -19,8 +19,11 @@ export interface StrategistAdvice {
   rationale: string;
   confidence: number;
   attestationLabel: "EMULATED" | "VERIFIED";
-  source?: {
+  source: {
     provider: "mock" | "eliza" | "phala";
+    label: "EMULATED" | "VERIFIED";
+    modelProvider?: "gemini" | "phala" | "deterministic";
+    modelName?: string;
     actionName?: string;
     actionText?: string;
     callbackText?: string;
