@@ -28,24 +28,34 @@ GET /agent/runtime
 The response shows the selected runtime, strategist provider, and whether the
 ElizaOS or Phala paths are ready.
 
-## ElizaOS Plan
+## ElizaOS Runtime
 
-ElizaOS is planned as the agent orchestration layer, but it is intentionally not
-installed in this pnpm workspace yet.
+ElizaOS is installed in the server workspace and wired through
+`ElizaAgentRuntime`. The runtime currently initializes the LP Guardian
+character and plugin, then returns the same structured foundation-run contract
+as the mock runtime.
 
-Reason:
+Use it with:
 
-- ElizaOS official setup currently uses Bun-first tooling.
-- This repository uses pnpm workspaces.
-- Mixing Bun install state into the repo before a spike risks lockfile and
-  dependency churn.
+```env
+AGENT_RUNTIME=eliza
+STRATEGIST_PROVIDER=mock
+OPENAI_API_KEY=...
+```
 
-Recommended path:
+Smoke test the runtime without starting the server:
 
-1. Keep `AGENT_RUNTIME=mock` in this repo.
-2. Create an isolated Bun spike outside the pnpm workspace.
-3. Prove one LP strategist agent can return structured advice.
-4. Bring the smallest working integration back through `ElizaAgentRuntime`.
+```bash
+pnpm --filter @lp-guardian/server agent:smoke
+```
+
+Current boundary:
+
+- Eliza runtime initialization and LP Guardian plugin registration are real.
+- The foundation-run envelope is server-native and labeled `mode: "eliza"`.
+- Strategy advice still comes from the configured `StrategistAdapter`.
+- Model-backed Eliza actions and Phala-verified strategist output are the next
+  integration steps.
 
 ## Phala Plan
 

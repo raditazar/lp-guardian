@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "agent:smoke": "tsx src/scripts/smokeElizaRuntime.ts",
     "risk:pipeline": "tsx src/scripts/runAggregateRiskPipeline.ts",
     "scan:robinhood-transfers": "tsx src/scripts/scanRobinhoodTransfers.ts",
     "smoke:robinhood-contracts": "tsx src/scripts/smokeRobinhoodContracts.ts"

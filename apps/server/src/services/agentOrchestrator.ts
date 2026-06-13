@@ -30,12 +30,21 @@ function topicForAgent(agent: AgentType): AgentTopic {
     }
 }
 
-export interface MockAgentRunResult{
+export type FoundationRunMode = "mock" | "eliza";
+
+export interface FoundationAgentRunResult{
     run: AgentRun;
     messages: AgentMessage[];
 }
 
-export function runMockFoundationAgents(): MockAgentRunResult {
+interface FoundationAgentRunOptions {
+    mode: FoundationRunMode;
+    note: (agent: AgentType) => string;
+}
+
+export function runFoundationAgents(
+    options: FoundationAgentRunOptions,
+): FoundationAgentRunResult {
     const startedAt= Date.now();
     const correlationId = createId("correlation");
     const messages = FOUNDATION_AGENTS.map((agent) => {
@@ -47,8 +56,8 @@ export function runMockFoundationAgents(): MockAgentRunResult {
             topic: topicForAgent(agent),
             correlationId,
             payload: {
-                mode: "mock",
-                note: `${agent} ran in mock mode as part of a test run.`,
+                mode: options.mode,
+                note: options.note(agent),
             },
         } satisfies AgentMessage;
     })
@@ -64,4 +73,18 @@ export function runMockFoundationAgents(): MockAgentRunResult {
         },
         messages,
     }
+}
+
+export function runMockFoundationAgents(): FoundationAgentRunResult {
+    return runFoundationAgents({
+        mode: "mock",
+        note: (agent) => `${agent} ran in mock mode as part of a test run.`,
+    });
+}
+
+export function runElizaFoundationAgents(): FoundationAgentRunResult {
+    return runFoundationAgents({
+        mode: "eliza",
+        note: (agent) => `${agent} ran through the ElizaOS runtime bridge.`,
+    });
 }

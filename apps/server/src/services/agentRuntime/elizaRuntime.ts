@@ -2,7 +2,7 @@ import type { AgentMessage } from "@lp-guardian/core";
 import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import { createLpGuardianElizaRuntime } from "../../agent/runtime.js";
 import type { FoundationRunRequest } from "../../schemas/agent.js";
-import { runMockFoundationAgents } from "../agentOrchestrator.js";
+import { runElizaFoundationAgents } from "../agentOrchestrator.js";
 import type {
   AgentRuntime,
   AgentRuntimeResult,
@@ -29,7 +29,7 @@ export class ElizaAgentRuntime implements AgentRuntime {
     input?: FoundationRunRequest,
   ): Promise<AgentRuntimeResult> {
     const runtime = await this.initialize();
-    const result = runMockFoundationAgents();
+    const result = runElizaFoundationAgents();
     const advice = await this.strategist.advise(input);
 
     return {
