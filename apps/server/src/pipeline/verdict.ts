@@ -2,6 +2,7 @@ import type { ServerConfig } from "../config.js";
 import type { ILBreakdown } from "./math/il.js";
 import type { RegimeClassification } from "./math/regimeClassifier.js";
 import type { HookScoringResult } from "./hooks/hookScorer.js";
+import { requestPhalaVerdict } from "./phalaVerdict.js";
 
 export type Recommendation = "hold" | "rebalance" | "migrate" | "monitor";
 
@@ -13,6 +14,21 @@ export interface VerdictResult {
   /** true when the verdict is not TEE-attested (mock / fallback). */
   stub: boolean;
   label: "EMULATED" | "VERIFIED";
+  /** Raw TDX attestation quote when produced inside a Phala/dstack TEE. */
+  attestationQuote?: string;
+}
+
+const RECOMMENDATIONS: Recommendation[] = [
+  "hold",
+  "rebalance",
+  "migrate",
+  "monitor",
+];
+
+function asRecommendation(value: string): Recommendation | null {
+  return (RECOMMENDATIONS as string[]).includes(value)
+    ? (value as Recommendation)
+    : null;
 }
 
 export interface VerdictInputs {
@@ -24,9 +40,12 @@ export interface VerdictInputs {
 
 /**
  * Synthesizes the final verdict from the analysis. Deterministic and labeled
- * EMULATED unless a real TEE strategist (Phala) attests it. When
- * STRATEGIST_PROVIDER=phala the real adapter would run here; it currently throws
- * and we fall back to the deterministic verdict.
+ * EMULATED unless attested by the TEE: when PHALA_API_URL points at the dstack
+ * CVM attestor, the verdict is computed inside the TEE and returned with a TDX
+ * quote → labeled VERIFIED. Any failure falls back to the deterministic verdict.
+ *
+ * Gated on PHALA_API_URL (not strategistProvider) so it stays independent of the
+ * agent-runtime strategist selection.
  */
 export async function synthesizeVerdict(
   config: ServerConfig,
@@ -34,14 +53,23 @@ export async function synthesizeVerdict(
 ): Promise<VerdictResult> {
   const deterministic = buildDeterministicVerdict(i);
 
-  if (config.strategistProvider === "phala") {
-    try {
-      // Placeholder for the real TEE strategist call. Until PhalaStrategistAdapter
-      // is wired (contract address + attestation verification), fall through.
-      throw new Error("Phala strategist not yet wired");
-    } catch (err) {
-      console.warn(`[verdict] Phala unavailable, using deterministic: ${String(err)}`);
+  if (config.phalaApiUrl) {
+    const resp = await requestPhalaVerdict(config, i);
+    if (resp && resp.attested && resp.quote) {
+      return {
+        markdown: resp.markdown || deterministic.markdown,
+        recommendation:
+          asRecommendation(resp.recommendation) ?? deterministic.recommendation,
+        model: "lp-guardian-tee-strategist-v0",
+        provider: "phala-dstack",
+        stub: false,
+        label: "VERIFIED",
+        attestationQuote: resp.quote,
+      };
     }
+    console.warn(
+      "[verdict] Phala CVM unavailable or unattested; using deterministic verdict.",
+    );
   }
 
   return deterministic;

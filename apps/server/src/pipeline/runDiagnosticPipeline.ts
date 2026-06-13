@@ -227,8 +227,13 @@ export async function* runDiagnosticPipeline(
   // ---- Phase 9: anchor on Robinhood Chain ----
   yield { type: "phase.start", phase: 9, label: "Anchor root" };
   const t9 = Date.now();
-  const attestationHash = keccak256(
-    toBytes(JSON.stringify(payload.attestation ?? {})),
+  // When the verdict was produced inside the TEE, anchor keccak256(quote) so the
+  // on-chain attestation hash binds to the real TDX attestation. Otherwise fall
+  // back to hashing the attestation metadata.
+  const attestationHash = (
+    verdict.attestationQuote
+      ? keccak256(toBytes(verdict.attestationQuote))
+      : keccak256(toBytes(JSON.stringify(payload.attestation ?? {})))
   ) as Hex;
   const anchor = await anchorReport(config, {
     portfolioOwner: normalizeOwner(resolved.owner),
@@ -298,6 +303,11 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
       type: "0g-compute-broker-signature",
       provider: i.verdict.provider,
       model: i.verdict.model,
+      // keccak256 of the TDX quote when TEE-attested — lets clients match the
+      // report against the on-chain attestationHash.
+      requestSignatureHash: i.verdict.attestationQuote
+        ? keccak256(toBytes(i.verdict.attestationQuote))
+        : undefined,
       generatedAt: nowIso,
       stub: i.verdict.stub,
     },
