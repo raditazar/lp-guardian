@@ -1,0 +1,33 @@
+{
+  "network": "robinhood-testnet",
+  "chainId": 46630,
+  "rpcEnv": "ROBINHOOD_RPC",
+  "deployer": "0x351675d772326d4700ff289bf15F45d5CBE5aa3c",
+  "deployedAt": "2026-06-13T03:34:21Z",
+  "contracts": {
+    "PortfolioReportRegistry": {
+      "address": "0x9803be5349eedf7c28ac1914b743757ce043b7cc",
+      "deployTx": "0x8fbe693fdaeb207a037160ac273723db8b66b5d910c026eabbaf2f24c6f30c26",
+      "activateTx": "0x2746aade816ec769f0cb77c8d28608d899e1a66aeeb8a8003639d9dead9ceafd",
+      "smokeTest": {
+        "method": "reportCount(uint256)(uint256)",
+        "input": "605311",
+        "output": "0"
+      }
+    },
+    "PortfolioRiskEngine": {
+      "address": "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0",
+      "deployTx": "0xfcd841f8fb141a8cafd97120636edc5963e4a80185645fb3ba564446eb3ed122",
+      "activateTx": "0xbf779421e1db53ab426b7e8e69f659149ef1b0c5ea8d42fd61ff657318bc5a86",
+      "smokeTest": {
+        "method": "computeRisk(uint256,uint256,uint256,uint256,uint256)(uint256,uint8,uint8)",
+        "input": ["10", "9", "3", "6000", "7000"],
+        "output": {
+          "riskScoreBps": "6650",
+          "riskTier": "2",
+          "recommendedAction": "2"
+        }
+      }
+    }
+  }
+}
