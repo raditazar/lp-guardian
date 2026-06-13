@@ -148,7 +148,15 @@ export function Atlas() {
             </button>
           </form>
 
-          <div className="atlas-demo-row" role="group" aria-label="Demo wallets">
+          <div className="atlas-demo-meta">
+            <span className="atlas-demo-kicker">Demo wallets</span>
+            <div className="atlas-demo-copy-wrap">
+              <div className="atlas-demo-headline">Pick a preset health state.</div>
+              <span className="atlas-demo-copy">Curated wallets that auto-fill and run Atlas instantly.</span>
+            </div>
+          </div>
+
+          <div className="atlas-demo-row" role="group" aria-label="Preset demo wallets">
             {CURATED_DEMO_WALLETS.map((w) => (
               <button
                 key={w.slot}
@@ -260,7 +268,7 @@ function AtlasIdlePanel() {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={2} size={140} bob />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
             <p>Paste a wallet.<br />I'll find the bleed.</p>
           </div>
         </div>
@@ -283,7 +291,7 @@ function AtlasLoadingPanel({ submitted }: { submitted: string }) {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={5} size={140} bob />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 320 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 320 }}>
             <p>Scanning <Mono>{shortAddr(submitted)}</Mono>…</p>
           </div>
         </div>
@@ -311,7 +319,7 @@ function AtlasErrorPanel({ message, onRetry }: { message: string; onRetry: () =>
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={8} size={140} />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 360 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 360 }}>
             <p>Lookup failed: <Mono>{message}</Mono></p>
           </div>
         </div>
@@ -342,7 +350,7 @@ function AtlasEmptyPanel() {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={7} size={140} />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
             <p>Nothing staked yet.<br />Try a demo wallet above.</p>
           </div>
         </div>

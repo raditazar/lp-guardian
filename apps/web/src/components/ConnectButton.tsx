@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useChainId, useConnect, useDisconnect } from "wagmi";
 
-function shortAddr(addr: string): string {
-  return addr.length <= 10 ? addr : `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+function shortAddr(addr: string, head = 6, tail = 4): string {
+  return addr.length <= head + tail + 1 ? addr : `${addr.slice(0, head)}…${addr.slice(-tail)}`;
 }
 
 const CHAIN_NAME: Record<number, string> = {
@@ -47,10 +47,10 @@ export function ConnectButton() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="btn btn-ghost"
+          className="btn btn-ghost atlas-connect-btn atlas-connect-btn-connected"
           aria-haspopup="menu"
           aria-expanded={open}
-          style={{ padding: "10px 14px", fontSize: 12, fontFamily: "var(--font-mono)" }}
+          style={{ padding: "10px 16px", fontSize: 12, fontFamily: "var(--font-mono)" }}
           title={`${address} on ${chainName}`}
         >
           <span
@@ -106,19 +106,28 @@ export function ConnectButton() {
               aria-hidden
             />
             <div className="wallet-menu-label">Connected wallet</div>
-            <div className="wallet-menu-address" title={address}>
-              {address}
+            <div className="wallet-menu-address-row">
+              <div className="wallet-menu-address" title={address}>
+                {shortAddr(address, 8, 6)}
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                className="wallet-menu-action wallet-menu-action-copy"
+                onClick={() => void copyAddress()}
+                aria-label={copied ? "Address copied" : "Copy address"}
+                title={copied ? "Address copied" : "Copy address"}
+              >
+                {copied ? "✓" : "⧉"}
+              </button>
             </div>
             <div className="wallet-menu-grid">
               <span>Chain</span>
               <strong>{chainName}</strong>
               <span>Connector</span>
-              <strong>{connector?.name ?? "Injected"}</strong>
+              <strong>{connector?.name === "Injected" ? "Browser wallet" : (connector?.name ?? "Browser wallet")}</strong>
             </div>
             <div className="wallet-menu-actions">
-              <button type="button" role="menuitem" className="wallet-menu-action" onClick={() => void copyAddress()}>
-                {copied ? "Copied" : "Copy address"}
-              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -143,8 +152,8 @@ export function ConnectButton() {
       type="button"
       onClick={() => primary && connect({ connector: primary })}
       disabled={isPending || !primary}
-      className="btn btn-primary"
-      style={{ padding: "10px 14px", fontSize: 13 }}
+      className="btn btn-primary atlas-connect-btn"
+      style={{ padding: "10px 18px", fontSize: 13 }}
     >
       {isPending ? "connecting…" : "Connect wallet"}
     </button>

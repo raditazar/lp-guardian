@@ -213,18 +213,29 @@
   text-transform: uppercase;
 }
 
+.atlas-theme .wallet-menu-address-row {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             8px;
+  margin-top:      12px;
+}
+
 .atlas-theme .wallet-menu-address {
-  margin-top:    12px;
-  padding:       10px 12px;
-  border:        2px solid var(--lp-ink-hard);
-  border-radius: 10px;
-  background:    oklch(0.21 0.11 267);
-  color:         var(--lp-lime);
-  font-family:   var(--font-mono);
-  font-size:     11px;
-  font-weight:   800;
-  line-height:   1.45;
-  word-break:    break-all;
+  min-width:      0;
+  flex:           1;
+  padding:        10px 12px;
+  border:         2px solid var(--lp-ink-hard);
+  border-radius:  10px;
+  background:     oklch(0.21 0.11 267);
+  color:          var(--lp-lime);
+  font-family:    var(--font-mono);
+  font-size:      11px;
+  font-weight:    800;
+  line-height:    1.2;
+  white-space:    nowrap;
+  overflow:       hidden;
+  text-overflow:  ellipsis;
 }
 
 .atlas-theme .wallet-menu-grid {
@@ -253,6 +264,25 @@
   display:    grid;
   gap:        8px;
   margin-top: 16px;
+}
+
+.atlas-theme .wallet-menu-action-copy {
+  width:          40px;
+  min-width:      40px;
+  min-height:     40px;
+  flex-shrink:    0;
+  padding:        0;
+  display:        inline-flex;
+  align-items:    center;
+  justify-content:center;
+  background:     var(--lp-paper);
+  color:          var(--lp-ink-hard);
+  box-shadow:     2px 2px 0 var(--lp-ink-hard);
+  font-family:    var(--font-mono);
+  font-size:      16px;
+  font-weight:    800;
+  line-height:    1;
+  letter-spacing: 0;
 }
 
 .atlas-theme .wallet-menu-action {
@@ -363,13 +393,105 @@
 .atlas-scan-submit:disabled { opacity: 0.45; cursor: not-allowed; }
 .atlas-scan-submit:focus-visible { outline: 3px solid var(--lp-lime); outline-offset: 3px; }
 
+/* Atlas speech bubbles + wallet button */
+.atlas-speech-bubble {
+  background:    var(--lp-paper);
+  color:         var(--lp-ink-hard);
+  border-radius: 28px;
+  box-shadow:    7px 7px 0 var(--lp-ink-hard);
+  padding:       18px 26px;
+}
+
+.atlas-speech-bubble p {
+  font-family:    var(--font-sans);
+  font-size:      16px;
+  font-weight:    700;
+  line-height:    1.4;
+  letter-spacing: -0.01em;
+}
+
+.atlas-speech-bubble[data-tail="tl"]::after {
+  top:           -17px;
+  left:          34px;
+  border-right:  16px solid transparent;
+  border-bottom: 17px solid var(--lp-ink-hard);
+}
+
+.atlas-connect-btn {
+  min-height:      48px;
+  padding:         10px 18px !important;
+  border:          3px solid var(--lp-ink-hard) !important;
+  border-radius:   9999px !important;
+  box-shadow:      4px 4px 0 var(--lp-ink-hard) !important;
+  font-family:     var(--font-display) !important;
+  font-size:       12px !important;
+  letter-spacing:  0.03em !important;
+  text-transform:  uppercase;
+  background:      var(--lp-lime) !important;
+  color:           var(--lp-ink-hard) !important;
+}
+
+.atlas-connect-btn:hover:not(:disabled) {
+  transform:  translate(1px, 1px);
+  box-shadow: 3px 3px 0 var(--lp-ink-hard) !important;
+}
+
+.atlas-connect-btn:active:not(:disabled) {
+  transform:  translate(4px, 4px);
+  box-shadow: none !important;
+}
+
+.atlas-connect-btn-connected {
+  background: color-mix(in oklch, var(--lp-paper) 92%, var(--lp-lime) 8%) !important;
+  color:      var(--lp-ink-hard) !important;
+}
+
 /* Demo wallet chips */
+.atlas-demo-meta {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            4px;
+  margin-top:     14px;
+}
+
+.atlas-demo-kicker {
+  font-family:    var(--font-mono);
+  font-size:      10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color:          var(--lp-ink-ghost);
+}
+
+.atlas-demo-copy-wrap {
+  display:        flex;
+  flex-direction: column;
+  gap:            4px;
+  max-width:      52ch;
+}
+
+.atlas-demo-headline {
+  font-family:    var(--font-display);
+  font-size:      clamp(1.1rem, 1.4vw, 1.45rem);
+  line-height:    1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color:          var(--lp-text);
+}
+
+.atlas-demo-copy {
+  font-family:    var(--font-mono);
+  font-size:      11px;
+  line-height:    1.55;
+  color:          var(--lp-text-soft);
+}
+
 .atlas-demo-row {
   display:         flex;
   gap:             8px;
   overflow-x:      auto;
   padding-bottom:  2px;
-  margin-top:      12px;
+  margin-top:      10px;
   scrollbar-width: none;
 }
 .atlas-demo-row::-webkit-scrollbar { display: none; }

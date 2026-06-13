@@ -13,9 +13,8 @@ import {
 // a screenshot. No-op (returns null) when the contract address isn't
 // configured at build time.
 
-// TODO(robinhood): update DEFAULT_AGENT_CONTRACT after contract redeployment on Robinhood Chain
 const DEFAULT_AGENT_CONTRACT =
-  "0x0000000000000000000000000000000000000000" as Address;
+  "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0" as Address;
 const rawAgentAddress =
   import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined;
 const AGENT_ADDRESS = (

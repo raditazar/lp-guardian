@@ -6,11 +6,11 @@ import "../styles/landing.css";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
-const REPO_BASE       = "https://github.com/<TODO>/lp-guardian";
+const REPO_BASE       = "https://github.com/raditazar/lp-guardian";
 const SOURCE_ARCHIVE  = `${REPO_BASE}/archive/refs/heads/main.zip`;
 const BACKEND_URL     = (import.meta.env.VITE_LPGUARDIAN_API_URL as string | undefined) ?? ""; // TODO(robinhood): set after backend deployment
-const AGENT_CONTRACT  = (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined) ?? "0x0000000000000000000000000000000000000000" /* TODO(robinhood): redeploy on Robinhood Chain */;
-const REPORTS_CONTRACT = "0x0000000000000000000000000000000000000000" /* TODO(robinhood): redeploy on Robinhood Chain */;
+const AGENT_CONTRACT  = (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined) ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0";
+const REPORTS_CONTRACT = "0x9803be5349eedf7c28ac1914b743757ce043b7cc";
 const AGENT_TOKEN_ID  = (import.meta.env.VITE_LPGUARDIAN_AGENT_TOKEN_ID as string | undefined) ?? "1";
 const MAINNET_RPC     = ""; // TODO(robinhood): set Robinhood Chain RPC
 
@@ -219,19 +219,24 @@ const TOOLS: ToolRow[] = [
 
 /* ─── Code strings ───────────────────────────────────────────────────── */
 
-const CODE_MINT = `# 1. mint a 24 h license on Robinhood Chain
+const CODE_MINT = `# 1. set wallet + chain vars
+export YOUR_KEY=0xYOUR_PRIVATE_KEY
+export RPC_URL=https://your-robinhood-rpc
+export WALLET_ADDRESS=0xYOUR_WALLET_ADDRESS
+
+# 2. mint a 24 h license on Robinhood Chain
 cast send ${AGENT_CONTRACT} \\
   "mintLicense(uint256,address,uint64)" \\
-  ${AGENT_TOKEN_ID} <yourAddress> $(($(date +%s) + 86400)) \\
+  ${AGENT_TOKEN_ID} $WALLET_ADDRESS $(($(date +%s) + 86400)) \\
   --value 0.1ether \\
-  --rpc-url ${MAINNET_RPC} \\
+  --rpc-url $RPC_URL \\
   --private-key $YOUR_KEY
 
-# 2. verify the license is active
+# 3. verify the license is active
 cast call ${AGENT_CONTRACT} \\
   "isLicensed(uint256,address)(bool)" \\
-  ${AGENT_TOKEN_ID} <yourAddress> \\
-  --rpc-url ${MAINNET_RPC}
+  ${AGENT_TOKEN_ID} $WALLET_ADDRESS \\
+  --rpc-url $RPC_URL
 # → true`;
 
 const CODE_SETUP = `git clone ${REPO_BASE}.git LP-Guardian

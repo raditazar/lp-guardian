@@ -1,6 +1,6 @@
 # @lpguardian/web
 
-Frontend for LP Guardian. Built with React, Vite, React Query, React Router, viem, and wagmi.
+Frontend for LP Guardian. Built with React, Vite, React Query, React Router, viem, and  .
 
 **Hosted UI:** https://lpguardian.vercel.app/
 

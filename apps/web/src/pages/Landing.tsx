@@ -87,16 +87,6 @@ export function Landing() {
           <Mascot n={3} size={180} />
         </div>
 
-        {/* Scroll cue */}
-        <div className="lp-scroll-cue">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--lp-ink-ghost)", fontSize: 10 }}>
-            <div style={{ width: 36, height: 1, background: "var(--lp-border-mid)" }} />
-            <span style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Scroll · how it works
-            </span>
-            <div style={{ width: 36, height: 1, background: "var(--lp-border-mid)" }} />
-          </div>
-        </div>
       </section>
 
       {/* ── 2 · Claims strip — three numbers, no card boxes ─────────── */}
