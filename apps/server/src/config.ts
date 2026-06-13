@@ -11,6 +11,8 @@ export interface ServerConfig {
 
   // --- Chains ---
   arbitrumRpc: string;
+  /** Alias of arbitrumRpc for scripts that reference arbitrumRpcUrl. */
+  arbitrumRpcUrl?: string;
   arbitrumChainId: number;
   robinhoodRpc: string;
   /** Alias of robinhoodRpc kept for the robinhood/* services. */
@@ -130,6 +132,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     strategistProvider: env.STRATEGIST_PROVIDER === "phala" ? "phala" : "mock",
 
     arbitrumRpc: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
+    arbitrumRpcUrl: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
     arbitrumChainId: Number(env.ARBITRUM_CHAIN_ID ?? 42161),
     robinhoodRpc,
     robinhoodRpcUrl: robinhoodRpc,

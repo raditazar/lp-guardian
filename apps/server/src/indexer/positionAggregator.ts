@@ -1,6 +1,7 @@
 import type { ServerConfig } from "../config.js";
 import { getCurrentPricesUSD } from "../prices/coinGecko.js";
 import { fetchUniswapV3Positions } from "./uniswapV3.js";
+import { fetchUniswapV4Positions } from "./uniswapV4.js";
 import { fetchCamelotPositions } from "./camelot.js";
 import { getMockArbitrumPositions } from "./mockArbitrum.js";
 import type { PositionsResult, V3PositionRaw } from "./types.js";
@@ -30,10 +31,11 @@ export async function fetchPositions(
   const settled = await Promise.allSettled([
     fetchCamelotPositions(config, address),
     fetchUniswapV3Positions(config, address),
+    fetchUniswapV4Positions(config, address),
   ]);
 
   const positions: V3PositionRaw[] = [];
-  const labels = ["camelot", "uniswap-v3"];
+  const labels = ["camelot", "uniswap-v3", "uniswap-v4"];
   settled.forEach((r, i) => {
     if (r.status === "fulfilled") positions.push(...r.value);
     else warnings.push(`${labels[i]} indexing failed: ${String(r.reason)}`);

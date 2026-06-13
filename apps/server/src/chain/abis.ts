@@ -182,7 +182,10 @@ export const univ3PoolAbi = [
   },
 ] as const;
 
-// Camelot/Algebra pool — current price/tick lives in globalState().
+// Camelot/Algebra pool — current price/tick lives in globalState(). Algebra
+// versions differ in the trailing fields (and some encode `unlocked` as a value
+// viem won't accept as bool), so we only declare the leading fields we use;
+// viem reads these and ignores the rest.
 export const algebraPoolAbi = [
   {
     type: "function",
@@ -193,10 +196,6 @@ export const algebraPoolAbi = [
       { name: "price", type: "uint160" },
       { name: "tick", type: "int24" },
       { name: "fee", type: "uint16" },
-      { name: "timepointIndex", type: "uint16" },
-      { name: "communityFeeToken0", type: "uint8" },
-      { name: "communityFeeToken1", type: "uint8" },
-      { name: "unlocked", type: "bool" },
     ],
   },
   {
@@ -289,6 +288,55 @@ export const portfolioRiskEngineAbi = [
   },
 ] as const;
 
+// Uniswap V4 PositionManager (posm) — Arbitrum One. Position state is split:
+// the posm holds the NFT + poolKey/range, the singleton PoolManager holds
+// liquidity/slot0 (read via StateView).
+export const v4PositionManagerAbi = [
+  {
+    type: "function",
+    name: "getPositionLiquidity",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ type: "uint128" }],
+  },
+  {
+    type: "function",
+    name: "getPoolAndPositionInfo",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [
+      {
+        name: "poolKey",
+        type: "tuple",
+        components: [
+          { name: "currency0", type: "address" },
+          { name: "currency1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+      { name: "info", type: "uint256" },
+    ],
+  },
+] as const;
+
+// Uniswap V4 StateView — reads pool state from the singleton PoolManager.
+export const v4StateViewAbi = [
+  {
+    type: "function",
+    name: "getSlot0",
+    stateMutability: "view",
+    inputs: [{ name: "poolId", type: "bytes32" }],
+    outputs: [
+      { name: "sqrtPriceX96", type: "uint160" },
+      { name: "tick", type: "int24" },
+      { name: "protocolFee", type: "uint24" },
+      { name: "lpFee", type: "uint24" },
+    ],
+  },
+] as const;
+
 // Well-known Arbitrum One addresses.
 export const ARBITRUM_ADDRESSES = {
   univ3PositionManager: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
@@ -296,4 +344,8 @@ export const ARBITRUM_ADDRESSES = {
   // Camelot V3 (Algebra) — Arbitrum One
   camelotPositionManager: "0x00c7f3082833e796A5b3e4Bd59f6642FF44DCD15",
   camelotFactory: "0x1a3c9B1d2F0529D97f2afC5136Cc23e58f1FD35B",
+  // Uniswap V4 — Arbitrum One (verified on-chain)
+  v4PositionManager: "0xd88f38f930b7952f2db2432cb002e7abbf3dd869",
+  v4StateView: "0x76fd297e2d437cd7f76d50f01afe6160f86e9990",
+  v4PoolManager: "0x360e68faccca8ca495c1b759fd9eee466db9fb32",
 } as const;
