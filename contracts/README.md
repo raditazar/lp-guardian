@@ -7,6 +7,8 @@ Rust/Arbitrum Stylus contracts for LP Guardian's Robinhood Chain contract track.
 - `PortfolioReportRegistry`: append-only report anchor registry keyed by `rootHash`.
 - `PortfolioRiskEngine`: deterministic portfolio risk scorer for aggregate LP metrics.
 
+See `CONTRACTS.md` for the full developer-facing contract reference, function behavior, integration flow, and example `cast` calls.
+
 The Solidity contracts in `../LP-Doctor/contracts` are reference material only. This folder is the canonical Stylus implementation for LP Guardian.
 
 ## Robinhood Chain Testnet

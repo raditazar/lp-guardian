@@ -1,7 +1,6 @@
 // Shared types between server, web, agent, and mcp-server.
 
-// TODO(robinhood): update ChainId after Robinhood Chain ID is confirmed
-export type ChainId = 1 | 11155111 | 8453 | 42161 | 10 | 137;
+export type ChainId = 1 | 11155111 | 8453 | 42161 | 10 | 137 | 46630;
 
 export interface Token {
   address: string;
