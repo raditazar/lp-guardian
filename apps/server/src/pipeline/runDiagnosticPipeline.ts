@@ -11,6 +11,7 @@ import { computeIL } from "./math/il.js";
 import { computeRegimeFeatures } from "./math/regimeFeatures.js";
 import { classifyRegime, regimeNarrative } from "./math/regimeClassifier.js";
 import { discoverHooks } from "./hooks/hookDiscovery.js";
+import { discoverHooksFromSubgraph } from "./hooks/v4HookDiscovery.js";
 import { scoreHook } from "./hooks/hookScorer.js";
 import { buildMigrationPreview } from "./migration.js";
 import { synthesizeVerdict } from "./verdict.js";
@@ -140,16 +141,22 @@ export async function* runDiagnosticPipeline(
   yield { type: "phase.start", phase: 5, label: "Discover hooks" };
   yield { type: "tool.call", tool: "discoverV4Hooks", input: { pair } };
   const t5 = Date.now();
-  const hooks = discoverHooks(pair, pos.pool.id, regime.topLabel);
+  // Prefer real V4 pools from the subgraph (flags decoded from the hook
+  // address); fall back to the heuristic when no query key / no V4 pool exists.
+  const realHooks = await discoverHooksFromSubgraph(config, token0, token1, pair);
+  const hooks = realHooks ?? discoverHooks(pair, pos.pool.id, regime.topLabel);
+  const hooksVerified = realHooks !== null;
   yield {
     type: "tool.result",
     tool: "discoverV4Hooks",
     latencyMs: Date.now() - t5,
-    output: hooks,
+    output: { ...hooks, source: hooksVerified ? "subgraph" : "heuristic" },
   };
   yield {
     type: "narrative",
-    text: `Found ${hooks.count} candidate hook (${hooks.topFamily.replace(/_/g, " ").toLowerCase()}).`,
+    text: hooksVerified
+      ? `Found ${hooks.count} real V4 hook${hooks.count === 1 ? "" : "s"} for ${pair} (${hooks.topFamily.replace(/_/g, " ").toLowerCase()}).`
+      : `No live V4 hook indexed for ${pair} — using a ${hooks.topFamily.replace(/_/g, " ").toLowerCase()} reference candidate.`,
   };
   yield { type: "phase.end", phase: 5, durationMs: Date.now() - t5 };
   await sleep(40);
@@ -266,8 +273,13 @@ export async function* runDiagnosticPipeline(
   // ---- Phase 9: anchor on Robinhood Chain ----
   yield { type: "phase.start", phase: 9, label: "Anchor root" };
   const t9 = Date.now();
-  const attestationHash = keccak256(
-    toBytes(JSON.stringify(payload.attestation ?? {})),
+  // When the verdict was produced inside the TEE, anchor keccak256(quote) so the
+  // on-chain attestation hash binds to the real TDX attestation. Otherwise fall
+  // back to hashing the attestation metadata.
+  const attestationHash = (
+    verdict.attestationQuote
+      ? keccak256(toBytes(verdict.attestationQuote))
+      : keccak256(toBytes(JSON.stringify(payload.attestation ?? {})))
   ) as Hex;
   const anchor = await anchorReport(config, {
     portfolioOwner: normalizeOwner(resolved.owner),
@@ -350,6 +362,11 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
       type: "0g-compute-broker-signature",
       provider: i.verdict.provider,
       model: i.verdict.model,
+      // keccak256 of the TDX quote when TEE-attested — lets clients match the
+      // report against the on-chain attestationHash.
+      requestSignatureHash: i.verdict.attestationQuote
+        ? keccak256(toBytes(i.verdict.attestationQuote))
+        : undefined,
       generatedAt: nowIso,
       stub: i.verdict.stub,
     },

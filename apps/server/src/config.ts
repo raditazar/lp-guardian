@@ -27,6 +27,7 @@ export interface ServerConfig {
 
   // --- Data sources ---
   theGraphKey: string | null;
+  uniswapV4SubgraphId: string | null;
   coinGeckoApiKey: string | null;
 
   // --- ElizaOS model provider ---
@@ -140,6 +141,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
+    uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
     coinGeckoApiKey: nonEmpty(env.COINGECKO_API_KEY),
     geminiApiKey: nonEmpty(env.GEMINI_API_KEY),
     geminiModel: nonEmpty(env.GEMINI_MODEL) ?? "gemini-3.5-flash",

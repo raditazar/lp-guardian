@@ -2,6 +2,7 @@ import type { ServerConfig } from "../config.js";
 import type { ILBreakdown } from "./math/il.js";
 import type { RegimeClassification } from "./math/regimeClassifier.js";
 import type { HookScoringResult } from "./hooks/hookScorer.js";
+import { requestPhalaVerdict } from "./phalaVerdict.js";
 
 export type Recommendation = "hold" | "rebalance" | "migrate" | "monitor";
 
@@ -13,6 +14,21 @@ export interface VerdictResult {
   /** true when the verdict is not TEE-attested (mock / fallback). */
   stub: boolean;
   label: "EMULATED" | "VERIFIED";
+  /** Raw TDX attestation quote when produced inside a Phala/dstack TEE. */
+  attestationQuote?: string;
+}
+
+const RECOMMENDATIONS: Recommendation[] = [
+  "hold",
+  "rebalance",
+  "migrate",
+  "monitor",
+];
+
+function asRecommendation(value: string): Recommendation | null {
+  return (RECOMMENDATIONS as string[]).includes(value)
+    ? (value as Recommendation)
+    : null;
 }
 
 export interface VerdictInputs {
@@ -23,15 +39,46 @@ export interface VerdictInputs {
 }
 
 /**
- * Synthesizes the baseline deterministic verdict. This serves as the foundation
- * which can then be overridden or enriched by more advanced strategist advice
- * (like LLM or TEE-based) in the diagnostic pipeline.
+ * Synthesizes the final verdict from the analysis. Deterministic and labeled
+ * EMULATED unless attested by the TEE: when PHALA_API_URL points at the dstack
+ * CVM attestor, the verdict is computed inside the TEE and returned with a TDX
+ * quote → labeled VERIFIED. Any failure falls back to the deterministic verdict.
+ *
+ * Gated on PHALA_API_URL (not strategistProvider) so it stays independent of the
+ * agent-runtime strategist selection.
  */
 export async function synthesizeVerdict(
-  _config: ServerConfig,
+  config: ServerConfig,
   i: VerdictInputs,
 ): Promise<VerdictResult> {
-  return buildDeterministicVerdict(i);
+  const deterministic = buildDeterministicVerdict(i);
+
+  if (config.phalaApiUrl) {
+    try {
+      const resp = await requestPhalaVerdict(config, i);
+      if (resp && resp.attested && resp.quote) {
+        return {
+          markdown: resp.markdown || deterministic.markdown,
+          recommendation:
+            asRecommendation(resp.recommendation) ?? deterministic.recommendation,
+          model: "lp-guardian-tee-strategist-v0",
+          provider: "phala-dstack",
+          stub: false,
+          label: "VERIFIED",
+          attestationQuote: resp.quote,
+        };
+      }
+    } catch (err) {
+      console.warn(
+        `[verdict] Phala CVM request failed: ${String(err)}. Using deterministic verdict.`,
+      );
+    }
+    console.warn(
+      "[verdict] Phala CVM unavailable or unattested; using deterministic verdict.",
+    );
+  }
+
+  return deterministic;
 }
 
 function buildDeterministicVerdict(i: VerdictInputs): VerdictResult {
