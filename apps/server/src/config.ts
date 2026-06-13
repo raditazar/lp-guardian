@@ -27,6 +27,7 @@ export interface ServerConfig {
 
   // --- Data sources ---
   theGraphKey: string | null;
+  uniswapV4SubgraphId: string | null;
   coinGeckoApiKey: string | null;
 
   // --- Deployed Stylus contracts (Robinhood Chain) ---
@@ -136,6 +137,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
+    uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
     coinGeckoApiKey: nonEmpty(env.COINGECKO_API_KEY),
 
     reportRegistryAddress: reportRegistry,
