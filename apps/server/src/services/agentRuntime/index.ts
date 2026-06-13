@@ -2,6 +2,7 @@ import type { ServerConfig } from "../../config.js";
 import { ElizaAgentRuntime } from "./elizaRuntime.js";
 import { MockAgentRuntime } from "./mockRuntime.js";
 import {
+  FallbackStrategistAdapter,
   MockStrategistAdapter,
   PhalaStrategistAdapter,
 } from "./strategists.js";
@@ -12,17 +13,20 @@ import type {
 } from "./types.js";
 
 function createStrategist(config: ServerConfig): StrategistAdapter {
+  const adapters: StrategistAdapter[] = [];
+
   if (config.strategistProvider === "phala") {
-    return new PhalaStrategistAdapter(config);
+    adapters.push(new PhalaStrategistAdapter(config));
   }
-  return new MockStrategistAdapter();
+
+  adapters.push(new MockStrategistAdapter());
+
+  return new FallbackStrategistAdapter(adapters);
 }
 
 export function createAgentRuntime(config: ServerConfig): AgentRuntime {
   if (config.agentRuntimeProvider === "eliza") {
-    const strategist =
-      config.strategistProvider === "phala" ? createStrategist(config) : undefined;
-    return new ElizaAgentRuntime(strategist);
+    return new ElizaAgentRuntime(config);
   }
 
   const strategist = createStrategist(config);

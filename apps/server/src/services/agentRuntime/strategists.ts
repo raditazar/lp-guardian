@@ -1,6 +1,9 @@
 import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import type { ServerConfig } from "../../config.js";
-import type { FoundationRunRequest } from "../../schemas/agent.js";
+import {
+  strategistAdviceSchema,
+  type FoundationRunRequest,
+} from "../../schemas/agent.js";
 import { runElizaSummarizeLpRiskAction } from "./elizaActionRunner.js";
 import type { StrategistAdapter, StrategistAdvice } from "./types.js";
 
@@ -10,7 +13,7 @@ export class MockStrategistAdapter implements StrategistAdapter {
   async advise(input?: FoundationRunRequest): Promise<StrategistAdvice> {
     const scenario = input?.scenario ?? "basic";
 
-    return {
+    const advice = {
       recommendation:
         scenario === "dust-and-correlation" ? "migrate" : "monitor",
       rationale:
@@ -25,10 +28,12 @@ export class MockStrategistAdapter implements StrategistAdapter {
         provider: "mock",
         label: "EMULATED",
         modelProvider: "deterministic",
-        modelName: "mock-strategist-v0",
+        modelName: "mock-deterministic-strategist",
         modelBacked: false,
       },
     };
+
+    return strategistAdviceSchema.parse(advice);
   }
 }
 
@@ -64,6 +69,38 @@ export class PhalaStrategistAdapter implements StrategistAdapter {
 
     throw new Error(
       "PhalaStrategistAdapter is configured but not wired to the provider call yet. Add the Phala request/verification contract once the SC and Phala interfaces are finalized.",
+    );
+  }
+}
+
+/**
+ * Orchestrates multilevel fallback: tries each adapter in sequence until one succeeds.
+ */
+export class FallbackStrategistAdapter implements StrategistAdapter {
+  constructor(private readonly adapters: StrategistAdapter[]) {}
+
+  /** returns the provider of the first adapter (the primary one) */
+  get provider() {
+    return this.adapters[0]?.provider ?? ("mock" as const);
+  }
+
+  async advise(input?: FoundationRunRequest): Promise<StrategistAdvice> {
+    let lastError: Error | undefined;
+
+    for (const adapter of this.adapters) {
+      try {
+        const advice = await adapter.advise(input);
+        return advice;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(
+          `[strategist-fallback] ${adapter.provider} failed, trying next... Reason: ${lastError.message}`,
+        );
+      }
+    }
+
+    throw (
+      lastError ?? new Error("No strategist adapters succeeded in fallback chain.")
     );
   }
 }

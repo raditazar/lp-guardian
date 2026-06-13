@@ -3,12 +3,18 @@ import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import { createLpGuardianElizaRuntime } from "../../agent/runtime.js";
 import type { FoundationRunRequest } from "../../schemas/agent.js";
 import { runElizaFoundationAgents } from "../agentOrchestrator.js";
-import { ElizaStrategistAdapter } from "./strategists.js";
+import {
+  ElizaStrategistAdapter,
+  FallbackStrategistAdapter,
+  MockStrategistAdapter,
+  PhalaStrategistAdapter,
+} from "./strategists.js";
 import type {
   AgentRuntime,
   AgentRuntimeResult,
   StrategistAdapter,
 } from "./types.js";
+import type { ServerConfig } from "../../config.js";
 
 export class ElizaAgentRuntime implements AgentRuntime {
   readonly provider = "eliza" as const;
@@ -16,9 +22,21 @@ export class ElizaAgentRuntime implements AgentRuntime {
   private initializePromise: Promise<ElizaRuntime> | null = null;
   private readonly strategist: StrategistAdapter;
 
-  constructor(strategist?: StrategistAdapter) {
-    this.strategist =
-      strategist ?? new ElizaStrategistAdapter(() => this.initialize());
+  constructor(config: ServerConfig) {
+    const adapters: StrategistAdapter[] = [];
+
+    // 1. Priority: Phala (if enabled in config)
+    if (config.strategistProvider === "phala") {
+      adapters.push(new PhalaStrategistAdapter(config));
+    }
+
+    // 2. Fallback: Eliza LLM-backed actions
+    adapters.push(new ElizaStrategistAdapter(() => this.initialize()));
+
+    // 3. Last Resort: Deterministic Mock
+    adapters.push(new MockStrategistAdapter());
+
+    this.strategist = new FallbackStrategistAdapter(adapters);
   }
 
   async initialize(): Promise<ElizaRuntime> {

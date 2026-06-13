@@ -23,28 +23,15 @@ export interface VerdictInputs {
 }
 
 /**
- * Synthesizes the final verdict from the analysis. Deterministic and labeled
- * EMULATED unless a real TEE strategist (Phala) attests it. When
- * STRATEGIST_PROVIDER=phala the real adapter would run here; it currently throws
- * and we fall back to the deterministic verdict.
+ * Synthesizes the baseline deterministic verdict. This serves as the foundation
+ * which can then be overridden or enriched by more advanced strategist advice
+ * (like LLM or TEE-based) in the diagnostic pipeline.
  */
 export async function synthesizeVerdict(
-  config: ServerConfig,
+  _config: ServerConfig,
   i: VerdictInputs,
 ): Promise<VerdictResult> {
-  const deterministic = buildDeterministicVerdict(i);
-
-  if (config.strategistProvider === "phala") {
-    try {
-      // Placeholder for the real TEE strategist call. Until PhalaStrategistAdapter
-      // is wired (contract address + attestation verification), fall through.
-      throw new Error("Phala strategist not yet wired");
-    } catch (err) {
-      console.warn(`[verdict] Phala unavailable, using deterministic: ${String(err)}`);
-    }
-  }
-
-  return deterministic;
+  return buildDeterministicVerdict(i);
 }
 
 function buildDeterministicVerdict(i: VerdictInputs): VerdictResult {
