@@ -26,6 +26,7 @@ export class MockStrategistAdapter implements StrategistAdapter {
         label: "EMULATED",
         modelProvider: "deterministic",
         modelName: "mock-strategist-v0",
+        modelBacked: false,
       },
     };
   }

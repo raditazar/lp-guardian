@@ -229,6 +229,7 @@ export async function* runDiagnosticPipeline(
         sourceLabel: strategistAdvice.source.label,
         modelProvider: strategistAdvice.source.modelProvider ?? "",
         modelName: strategistAdvice.source.modelName ?? "",
+        modelBacked: String(strategistAdvice.source.modelBacked ?? false),
         actionName: strategistAdvice.source.actionName ?? "",
       },
     };
@@ -306,6 +307,9 @@ export async function* runDiagnosticPipeline(
       strategistProvider: strategistAdvice?.source.provider ?? "",
       strategistModelProvider: strategistAdvice?.source.modelProvider ?? "",
       strategistModel: strategistAdvice?.source.modelName ?? "",
+      strategistModelBacked: String(
+        strategistAdvice?.source.modelBacked ?? false,
+      ),
       strategistAction: strategistAdvice?.source.actionName ?? "",
     },
   };
@@ -385,6 +389,7 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
             label: i.strategistAdvice.source.label,
             modelProvider: i.strategistAdvice.source.modelProvider,
             modelName: i.strategistAdvice.source.modelName,
+            modelBacked: i.strategistAdvice.source.modelBacked,
             actionName: i.strategistAdvice.source.actionName,
           },
         }
@@ -406,7 +411,7 @@ function applyStrategistAdvice(
         advice.source.actionName ? `/${advice.source.actionName}` : ""
       }; model: ${advice.source.modelProvider ?? "unknown"}/${
         advice.source.modelName ?? "unknown"
-      }; label: ${advice.attestationLabel}._`,
+      }; modelBacked: ${String(advice.source.modelBacked ?? false)}; label: ${advice.attestationLabel}._`,
       "",
       verdict.markdown,
     ].join("\n"),

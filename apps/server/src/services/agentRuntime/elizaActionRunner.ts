@@ -15,9 +15,10 @@ import type { StrategistAdvice } from "./types.js";
 export interface ElizaActionAdvice extends StrategistAdvice {
   source: {
     provider: "eliza";
-    label: "EMULATED";
-    modelProvider: "gemini";
-    modelName: string;
+      label: "EMULATED";
+      modelProvider: "gemini" | "deterministic";
+      modelName: string;
+      modelBacked: boolean;
     actionName: string;
     actionText?: string;
     callbackText?: string;
@@ -75,8 +76,9 @@ export async function runElizaSummarizeLpRiskAction(
     source: {
       provider: "eliza",
       label: "EMULATED",
-      modelProvider: "gemini",
-      modelName: readRuntimeModel(runtime),
+      modelProvider: readModelProvider(result.values?.modelProvider),
+      modelName: readModelName(runtime, result.values?.modelName),
+      modelBacked: result.values?.modelBacked === true,
       actionName: action.name,
       actionText: result.text,
       callbackText: callbackContent?.text,
@@ -139,7 +141,15 @@ function readAttestationLabel(
   return value === "VERIFIED" ? "VERIFIED" : "EMULATED";
 }
 
-function readRuntimeModel(runtime: ElizaRuntime): string {
+function readModelProvider(value: unknown): "gemini" | "deterministic" {
+  return value === "gemini" ? "gemini" : "deterministic";
+}
+
+function readModelName(runtime: ElizaRuntime, value: unknown): string {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+
   const settings = runtime.character.settings as
     | { model?: unknown }
     | undefined;

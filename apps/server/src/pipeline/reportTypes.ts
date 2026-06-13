@@ -46,6 +46,7 @@ export interface AssembledReportPayload {
       label: string;
       modelProvider?: string;
       modelName?: string;
+      modelBacked?: boolean;
       actionName?: string;
     };
   };

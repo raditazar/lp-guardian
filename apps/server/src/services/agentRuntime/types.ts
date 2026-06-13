@@ -24,6 +24,7 @@ export interface StrategistAdvice {
     label: "EMULATED" | "VERIFIED";
     modelProvider?: "gemini" | "phala" | "deterministic";
     modelName?: string;
+    modelBacked?: boolean;
     actionName?: string;
     actionText?: string;
     callbackText?: string;

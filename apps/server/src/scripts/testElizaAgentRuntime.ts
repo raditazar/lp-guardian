@@ -5,6 +5,7 @@ import { loadConfig, loadLocalEnv } from "../config.js";
 loadLocalEnv();
 process.env.AGENT_RUNTIME = "eliza";
 process.env.STRATEGIST_PROVIDER = "mock";
+process.env.GEMINI_API_KEY = "";
 process.env.GEMINI_MODEL = "gemini-3.5-flash";
 
 const app = createApp(loadConfig());
@@ -40,8 +41,12 @@ for (const item of scenarios) {
   assert.equal(advice?.recommendation, item.recommendation);
   assert.equal(advice?.source?.provider, "eliza");
   assert.equal(advice?.source?.label, "EMULATED");
-  assert.equal(advice?.source?.modelProvider, "gemini");
-  assert.equal(advice?.source?.modelName, "gemini-3.5-flash");
+  assert.equal(advice?.source?.modelProvider, "deterministic");
+  assert.equal(
+    advice?.source?.modelName,
+    "lp-guardian-deterministic-eliza-action",
+  );
+  assert.equal(advice?.source?.modelBacked, false);
   assert.equal(advice?.source?.actionName, "SUMMARIZE_LP_RISK");
 }
 
@@ -52,8 +57,9 @@ console.log(JSON.stringify({
     mode: "eliza",
     runtimeProvider: "eliza",
     strategistProvider: "eliza",
-    modelProvider: "gemini",
-    modelName: "gemini-3.5-flash",
+    modelProvider: "deterministic",
+    modelName: "lp-guardian-deterministic-eliza-action",
+    modelBacked: false,
     actionName: "SUMMARIZE_LP_RISK",
   },
 }));

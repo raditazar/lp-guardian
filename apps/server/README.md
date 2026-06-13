@@ -73,7 +73,8 @@ Current boundary:
 - The foundation-run envelope is server-native and labeled `mode: "eliza"`.
 - Strategy advice comes from the configured `StrategistAdapter`; the default
   Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action and
-  labels its model source as Gemini.
+  calls Gemini when `GEMINI_API_KEY` is present. Without the key, the same action
+  falls back to deterministic local advice and marks `modelBacked: false`.
 - Phala-verified strategist output is the next attested integration step.
 
 ## Phala Plan
