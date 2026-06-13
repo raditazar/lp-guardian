@@ -1,7 +1,8 @@
 import {serve} from "@hono/node-server"
 import {createApp} from "./app.js";
-import {loadConfig} from "./config.js";
+import {loadConfig, loadLocalEnv} from "./config.js";
 
+loadLocalEnv();
 const config = loadConfig();
 const app = createApp(config);
 

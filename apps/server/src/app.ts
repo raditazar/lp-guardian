@@ -9,6 +9,7 @@ import { createAgentRuntimeRoute } from "./routes/agent/runtime.js";
 import { createHealthRoute } from "./routes/health.js";
 import { createMockAgentRunRoute } from "./routes/agent/mockRun.js";
 import { createPositionsRoute } from "./routes/positions.js";
+import { createPortfolioRoute } from "./routes/portfolio.js";
 
 export function createApp(config: ServerConfig): Hono {
   const app = new Hono();
@@ -22,6 +23,7 @@ export function createApp(config: ServerConfig): Hono {
   app.route("/agent/mock-run", createMockAgentRunRoute(agentRuntime));
   app.route("/api/diagnose", createDiagnoseRoute(agentRuntime));
   app.route("/api/positions", createPositionsRoute());
+  app.route("/api/portfolio", createPortfolioRoute(config));
 
   app.notFound(notFoundHandler);
   app.onError(errorHandler);

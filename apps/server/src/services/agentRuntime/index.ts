@@ -11,15 +11,15 @@ import type {
   StrategistAdapter,
 } from "./types.js";
 
-type StrategistProvider = StrategistAdapter["provider"];
-
-function createStrategist(provider: StrategistProvider): StrategistAdapter {
-  if (provider === "phala") return new PhalaStrategistAdapter();
+function createStrategist(config: ServerConfig): StrategistAdapter {
+  if (config.strategistProvider === "phala") {
+    return new PhalaStrategistAdapter(config);
+  }
   return new MockStrategistAdapter();
 }
 
 export function createAgentRuntime(config: ServerConfig): AgentRuntime {
-  const strategist = createStrategist(config.strategistProvider);
+  const strategist = createStrategist(config);
 
   if (config.agentRuntimeProvider === "eliza") {
     return new ElizaAgentRuntime(strategist);
