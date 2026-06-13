@@ -8,10 +8,17 @@ export interface RuntimeStatus {
   robinhoodReady: boolean;
   reportAnchoringReady: boolean;
   noMockDemoReady: boolean;
+  modelProvider: {
+    provider: "gemini";
+    model: string;
+    ready: boolean;
+  };
   notes: string[];
 }
 
 export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
+  const modelReady = Boolean(config.geminiApiKey);
+  const elizaReady = modelReady;
   const robinhoodReady = Boolean(
     config.robinhoodRpcUrl &&
       config.robinhoodChainId &&
@@ -33,14 +40,20 @@ export function getRuntimeStatus(config: ServerConfig): RuntimeStatus {
   return {
     agentRuntime: config.agentRuntimeProvider,
     strategistProvider: config.strategistProvider,
-    elizaReady: false,
+    elizaReady,
     phalaReady,
     robinhoodReady,
     reportAnchoringReady,
     noMockDemoReady,
+    modelProvider: {
+      provider: "gemini",
+      model: config.geminiModel,
+      ready: modelReady,
+    },
     notes: [
-      "ElizaOS is planned but not installed in this pnpm workspace.",
-      "Use an isolated Bun spike before wiring AGENT_RUNTIME=eliza.",
+      elizaReady
+        ? `ElizaOS runtime dependencies are installed and GEMINI_API_KEY is present for ${config.geminiModel}.`
+        : `ElizaOS runtime dependencies are installed; set GEMINI_API_KEY before using model-backed actions with ${config.geminiModel}.`,
       robinhoodReady
         ? "Robinhood real-data config is present."
         : "Robinhood real-data config needs RPC, chain ID, NFPM address, and risk engine address.",

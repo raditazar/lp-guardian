@@ -19,13 +19,18 @@ function createStrategist(config: ServerConfig): StrategistAdapter {
 }
 
 export function createAgentRuntime(config: ServerConfig): AgentRuntime {
-  const strategist = createStrategist(config);
-
   if (config.agentRuntimeProvider === "eliza") {
+    const strategist =
+      config.strategistProvider === "phala" ? createStrategist(config) : undefined;
     return new ElizaAgentRuntime(strategist);
   }
 
+  const strategist = createStrategist(config);
   return new MockAgentRuntime(strategist);
 }
 
-export type { AgentRuntime, AgentRuntimeProvider };
+export type {
+  AgentRuntime,
+  AgentRuntimeProvider,
+  StrategistAdvice,
+} from "./types.js";

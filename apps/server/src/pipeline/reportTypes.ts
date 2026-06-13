@@ -36,6 +36,20 @@ export interface AssembledReportPayload {
     priceImpactPct?: number;
     warnings: string[];
   };
+  strategistAdvice?: {
+    recommendation: string;
+    rationale: string;
+    confidence: number;
+    attestationLabel: string;
+    source: {
+      provider: string;
+      label: string;
+      modelProvider?: string;
+      modelName?: string;
+      modelBacked?: boolean;
+      actionName?: string;
+    };
+  };
 }
 
 export interface PublicReport {

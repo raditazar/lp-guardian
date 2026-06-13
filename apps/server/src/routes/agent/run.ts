@@ -3,11 +3,11 @@ import { fail, ok } from "../../http/responses.js";
 import { foundationRunRequestSchema } from "../../schemas/agent.js";
 import type { AgentRuntime } from "../../services/agentRuntime/index.js";
 
-export function createMockAgentRunRoute(runtime: AgentRuntime): Hono {
+export function createAgentFoundationRunRoute(runtime: AgentRuntime): Hono {
   const route = new Hono();
 
   route.get("/", async (c) => {
-    const result = await runtime.runFoundationDemo();
+    const result = await runtime.runFoundation();
 
     return c.json(ok(result));
   });
@@ -27,7 +27,7 @@ export function createMockAgentRunRoute(runtime: AgentRuntime): Hono {
       );
     }
 
-    const result = await runtime.runFoundationDemo(parsed.data);
+    const result = await runtime.runFoundation(parsed.data);
 
     return c.json(ok(result));
   });

@@ -1,5 +1,7 @@
+import type { AgentRuntime as ElizaRuntime } from "@elizaos/core";
 import type { ServerConfig } from "../../config.js";
 import type { FoundationRunRequest } from "../../schemas/agent.js";
+import { runElizaSummarizeLpRiskAction } from "./elizaActionRunner.js";
 import type { StrategistAdapter, StrategistAdvice } from "./types.js";
 
 export class MockStrategistAdapter implements StrategistAdapter {
@@ -16,10 +18,27 @@ export class MockStrategistAdapter implements StrategistAdapter {
           ? "TEE strategist unavailable; using deterministic fallback advice."
           : scenario === "dust-and-correlation"
             ? "Dust and correlation risks are present; migration preview is the safest next step."
-          : "Mock strategist recommends monitoring unless dust and correlation risks are present.",
+            : "Mock strategist recommends monitoring unless dust and correlation risks are present.",
       confidence: scenario === "basic" ? 0.62 : 0.74,
       attestationLabel: "EMULATED",
+      source: {
+        provider: "mock",
+        label: "EMULATED",
+        modelProvider: "deterministic",
+        modelName: "mock-strategist-v0",
+        modelBacked: false,
+      },
     };
+  }
+}
+
+export class ElizaStrategistAdapter implements StrategistAdapter {
+  readonly provider = "eliza" as const;
+
+  constructor(private readonly getRuntime: () => Promise<ElizaRuntime>) {}
+
+  async advise(input?: FoundationRunRequest): Promise<StrategistAdvice> {
+    return runElizaSummarizeLpRiskAction(await this.getRuntime(), input);
   }
 }
 

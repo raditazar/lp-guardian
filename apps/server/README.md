@@ -28,24 +28,54 @@ GET /agent/runtime
 The response shows the selected runtime, strategist provider, and whether the
 ElizaOS or Phala paths are ready.
 
-## ElizaOS Plan
+Run the selected agent runtime with:
 
-ElizaOS is planned as the agent orchestration layer, but it is intentionally not
-installed in this pnpm workspace yet.
+```http
+GET /agent/foundation/run
+POST /agent/foundation/run
+Content-Type: application/json
 
-Reason:
+{
+  "walletAddress": "0x0000000000000000000000000000000000000000",
+  "scenario": "dust-and-correlation"
+}
+```
 
-- ElizaOS official setup currently uses Bun-first tooling.
-- This repository uses pnpm workspaces.
-- Mixing Bun install state into the repo before a spike risks lockfile and
-  dependency churn.
+When `AGENT_RUNTIME=eliza`, this endpoint initializes and uses the ElizaOS
+runtime bridge and the `SUMMARIZE_LP_RISK` Eliza action for strategist advice.
 
-Recommended path:
+## ElizaOS Runtime
 
-1. Keep `AGENT_RUNTIME=mock` in this repo.
-2. Create an isolated Bun spike outside the pnpm workspace.
-3. Prove one LP strategist agent can return structured advice.
-4. Bring the smallest working integration back through `ElizaAgentRuntime`.
+ElizaOS is installed in the server workspace and wired through
+`ElizaAgentRuntime`. The runtime currently initializes the LP Guardian
+character and plugin, then returns the same structured foundation-run contract
+as the mock runtime.
+
+Use it with:
+
+```env
+AGENT_RUNTIME=eliza
+STRATEGIST_PROVIDER=mock
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-3.5-flash
+```
+
+Smoke test the runtime without starting the server:
+
+```bash
+pnpm --filter @lp-guardian/server agent:smoke
+pnpm --filter @lp-guardian/server agent:test
+```
+
+Current boundary:
+
+- Eliza runtime initialization and LP Guardian plugin registration are real.
+- The foundation-run envelope is server-native and labeled `mode: "eliza"`.
+- Strategy advice comes from the configured `StrategistAdapter`; the default
+  Eliza runtime path uses the registered `SUMMARIZE_LP_RISK` Eliza action and
+  calls Gemini when `GEMINI_API_KEY` is present. Without the key, the same action
+  falls back to deterministic local advice and marks `modelBacked: false`.
+- Phala-verified strategist output is the next attested integration step.
 
 ## Phala Plan
 

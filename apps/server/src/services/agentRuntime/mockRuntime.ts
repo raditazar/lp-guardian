@@ -8,7 +8,7 @@ export class MockAgentRuntime implements AgentRuntime {
 
   constructor(private readonly strategist: StrategistAdapter) {}
 
-  async runFoundationDemo(
+  async runFoundation(
     input?: FoundationRunRequest,
   ): Promise<AgentRuntimeResult> {
     const result = runMockFoundationAgents();

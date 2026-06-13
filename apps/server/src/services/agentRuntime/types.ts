@@ -11,7 +11,7 @@ export interface AgentRuntimeResult {
 
 export interface AgentRuntime {
   readonly provider: AgentRuntimeProvider;
-  runFoundationDemo(input?: FoundationRunRequest): Promise<AgentRuntimeResult>;
+  runFoundation(input?: FoundationRunRequest): Promise<AgentRuntimeResult>;
 }
 
 export interface StrategistAdvice {
@@ -19,9 +19,19 @@ export interface StrategistAdvice {
   rationale: string;
   confidence: number;
   attestationLabel: "EMULATED" | "VERIFIED";
+  source: {
+    provider: "mock" | "eliza" | "phala";
+    label: "EMULATED" | "VERIFIED";
+    modelProvider?: "gemini" | "phala" | "deterministic";
+    modelName?: string;
+    modelBacked?: boolean;
+    actionName?: string;
+    actionText?: string;
+    callbackText?: string;
+  };
 }
 
 export interface StrategistAdapter {
-  readonly provider: "mock" | "phala";
+  readonly provider: "mock" | "eliza" | "phala";
   advise(input?: FoundationRunRequest): Promise<StrategistAdvice>;
 }
