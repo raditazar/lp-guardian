@@ -47,3 +47,7 @@ apps/web/screenshots/
 .gitmodules
 contracts/lib/
 contracts/foundry.lock
+CLAUDE.md
+flow.txt
+portfolio_lp_guardian_technical_docs.md
+task.md
