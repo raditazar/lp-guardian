@@ -44,10 +44,14 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
       services.agentRunQueue,
     );
 
+  const corsOrigin = config.corsOrigins.includes("*")
+    ? "*"
+    : config.corsOrigins;
+
   app.use(
     "*",
     cors({
-      origin: config.corsOrigins,
+      origin: corsOrigin,
       allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization"],
       maxAge: 86_400,
