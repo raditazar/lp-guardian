@@ -4,11 +4,12 @@ Hono backend for LP Guardian's BE Agent workstream.
 
 ## Current Priority
 
-The active BE Agent priority is wallet-first diagnosis with early ownership
-validation. See `../../docs/be-agent-priority.md`.
-
-Treat broader portfolio/MCP endpoint drafts as target architecture until they
-are reconciled with the current repo contract.
+The active BE Agent scope follows
+`../../docs/portfolio_lp_guardian_technical_docs.md`: portfolio-level diagnosis
+with the canonical six-agent direction
+`SCAN -> CORRELATE -> SIMULATE -> OPTIMIZE -> EXECUTE -> MONITOR`.
+See `../../docs/be-agent-priority.md` for the repo execution plan aligned to
+that brief.
 
 ## Current Runtime
 
@@ -24,6 +25,40 @@ Runtime status is available at:
 ```http
 GET /agent/runtime
 ```
+
+## MCP Adapter
+
+The MCP server lives in `apps/mcp-server` and is a thin STDIO adapter over the
+same HTTP backend services used by the web app. It does not implement a second
+diagnosis pipeline.
+
+Run the backend first:
+
+```bash
+pnpm --filter @lp-guardian/server dev
+```
+
+Then run the MCP server:
+
+```bash
+LPGUARDIAN_API_URL=http://localhost:3001 pnpm --filter @lp-guardian/mcp-server dev
+```
+
+Available tools:
+
+- `lp_guardian_ping`
+- `portfolio_diagnose`
+- `portfolio_simulate`
+- `portfolio_optimize`
+- `portfolio_execute`
+- `portfolio_monitor`
+
+Every product tool returns provenance fields such as `label`, `warnings`,
+`mockUsed`, and `degraded` alongside the backend result. Legacy
+`lp_guardian_*` tool names remain as compatibility aliases, but the public MCP
+surface follows the portfolio tool names from the technical docs. Tool outputs
+preserve backend errors instead of turning degraded or mismatched ownership into
+a recommendation.
 
 The response shows the selected runtime, strategist provider, and whether the
 ElizaOS or Phala paths are ready.

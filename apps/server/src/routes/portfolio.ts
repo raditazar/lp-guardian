@@ -1,16 +1,10 @@
 import { Hono } from "hono";
-import type { Address, Hex } from "viem";
+import type { Address } from "viem";
 import { z } from "zod";
 import type { ServerConfig } from "../config.js";
 import { fail, ok } from "../http/responses.js";
 import { portfolioDiagnoseSchema } from "../schemas/portfolio.js";
-import { validateNfpmTokenOwnership } from "../services/ownership.js";
-import { runAggregateRiskPipeline } from "../services/portfolio/aggregateRiskPipeline.js";
-import { buildWalletRiskInputFromRobinhood } from "../services/portfolio/walletRiskInput.js";
-import {
-  createRobinhoodPublicClient,
-  createRobinhoodWalletClient,
-} from "../services/robinhood/client.js";
+import { PortfolioService } from "../services/portfolio/portfolioService.js";
 import type { NfpmPositionSnapshot } from "../services/robinhood/transferScanner.js";
 import type { V3PositionRaw } from "../indexer/types.js";
 import type { WalletRiskInputResult } from "../services/portfolio/walletRiskInput.js";
@@ -35,16 +29,6 @@ function toJsonSafe(value: unknown): unknown {
   return Object.fromEntries(
     Object.entries(value).map(([key, entry]) => [key, toJsonSafe(entry)]),
   );
-}
-
-function ownershipTokenId(
-  input: z.infer<typeof portfolioDiagnoseSchema>,
-): string | undefined {
-  return input.tokenId;
-}
-
-function walletSubjectId(walletAddress: string): bigint {
-  return BigInt(walletAddress);
 }
 
 function positionToWire(
@@ -88,32 +72,9 @@ function positionToWire(
   };
 }
 
-function diagnoseSubjectId(
-  input: z.infer<typeof portfolioDiagnoseSchema>,
-): bigint {
-  if (input.subjectId !== "0") return BigInt(input.subjectId);
-  if (input.tokenId) return BigInt(input.tokenId);
-  return walletSubjectId(input.walletAddress);
-}
-
-function clientRiskInputSource(
-  input: z.infer<typeof portfolioDiagnoseSchema>,
-) {
-  if (!input.riskInput) return [];
-
-  return [
-    {
-      name: input.riskInputSource?.name ?? "Client supplied aggregate risk input",
-      label: input.riskInputSource?.label ?? "EMULATED",
-      notes: input.riskInputSource?.notes ?? [
-        "Backend did not derive this riskInput from wallet positions for this request.",
-      ],
-    },
-  ];
-}
-
 export function createPortfolioRoute(config: ServerConfig): Hono {
   const route = new Hono();
+  const service = new PortfolioService(config);
 
   route.get("/:walletAddress/positions", async (c) => {
     const parsed = z
@@ -128,37 +89,36 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
       );
     }
 
-    const publicClient = createRobinhoodPublicClient(config);
-    const walletRisk = await buildWalletRiskInputFromRobinhood(
-      config,
-      publicClient,
-      parsed.data as Address,
-    );
+    try {
+      const walletRisk = await service.getWalletPositions(parsed.data as Address);
 
-    return c.json(
-      ok(
-        toJsonSafe({
-          address: parsed.data,
-          version: 1,
-          source: "onchain",
-          chainId: config.robinhoodChainId,
-          nfpmAddress: walletRisk.scan.nfpmAddress,
-          scan: {
-            fromBlock: walletRisk.scan.fromBlock,
-            toBlock: walletRisk.scan.toBlock,
-            transferCount: walletRisk.scan.transfers.length,
-            candidateTokenIds: walletRisk.scan.candidateTokenIds,
-            currentlyOwnedTokenIds: walletRisk.scan.currentlyOwnedTokenIds,
-            movedOutTokenIds: walletRisk.scan.movedOutTokenIds,
-          },
-          positions: walletRisk.scan.positions.map((position) =>
-            positionToWire(position, walletRisk, config),
-          ),
-          portfolioRiskInput: walletRisk.riskInput,
-          sources: walletRisk.sources,
-        }),
-      ),
-    );
+      return c.json(
+        ok(
+          toJsonSafe({
+            address: parsed.data,
+            version: 1,
+            source: "onchain",
+            chainId: config.robinhoodChainId,
+            nfpmAddress: walletRisk.scan.nfpmAddress,
+            scan: {
+              fromBlock: walletRisk.scan.fromBlock,
+              toBlock: walletRisk.scan.toBlock,
+              transferCount: walletRisk.scan.transfers.length,
+              candidateTokenIds: walletRisk.scan.candidateTokenIds,
+              currentlyOwnedTokenIds: walletRisk.scan.currentlyOwnedTokenIds,
+              movedOutTokenIds: walletRisk.scan.movedOutTokenIds,
+            },
+            positions: walletRisk.scan.positions.map((position) =>
+              positionToWire(position, walletRisk, config),
+            ),
+            portfolioRiskInput: walletRisk.riskInput,
+            sources: walletRisk.sources,
+          }),
+        ),
+      );
+    } catch (err) {
+      return c.json(fail("INTERNAL_ERROR", String(err)), 500);
+    }
   });
 
   route.post("/diagnose", async (c) => {
@@ -176,110 +136,45 @@ export function createPortfolioRoute(config: ServerConfig): Hono {
       );
     }
 
-    const publicClient = createRobinhoodPublicClient(config);
-    const walletClient =
-      parsed.data.publishReport && config.walletBackendPrivateKey
-        ? createRobinhoodWalletClient(config)
-        : undefined;
-    const latestBlock = await publicClient.getBlockNumber();
-    const tokenId = ownershipTokenId(parsed.data);
-    const subjectId = diagnoseSubjectId(parsed.data);
-    const ownership = tokenId
-      ? await validateNfpmTokenOwnership({
-          client: publicClient,
-          chainId: config.robinhoodChainId,
-          nfpmAddress: config.robinhoodNfpmAddress as Address | undefined,
-          walletAddress: parsed.data.walletAddress as Address,
-          tokenId,
-          blockNumber: latestBlock,
-        })
-      : undefined;
-
-    if (ownership?.status === "mismatch") {
-      return c.json(
-        fail(
-          "OWNERSHIP_MISMATCH",
-          `Token ${ownership.tokenId} is owned by ${ownership.ownerAddress}, not ${ownership.walletAddress}.`,
-          toJsonSafe(ownership),
-        ),
-        409,
-      );
-    }
-
-    const walletRisk = parsed.data.riskInput
-      ? undefined
-      : await buildWalletRiskInputFromRobinhood(
-          config,
-          publicClient,
-          parsed.data.walletAddress as Address,
-        );
-
-    if (walletRisk && walletRisk.scan.currentlyOwnedTokenIds.length === 0) {
-      return c.json(
-        fail(
-          "NO_POSITIONS",
-          "No currently owned Robinhood NFPM positions were found for this wallet.",
-          toJsonSafe({
-            walletAddress: parsed.data.walletAddress,
-            nfpmAddress: walletRisk.scan.nfpmAddress,
-            fromBlock: walletRisk.scan.fromBlock,
-            toBlock: walletRisk.scan.toBlock,
-            transferCount: walletRisk.scan.transfers.length,
-          }),
-        ),
-        404,
-      );
-    }
-
-    const ownershipSource = ownership
-      ? {
-          name: "Robinhood NFPM ownerOf",
-          label: ownership.label,
-          chainId: ownership.chainId,
-          blockNumber: ownership.blockNumber,
-          contractAddress: ownership.contractAddress,
-          notes:
-            ownership.status === "unavailable" && ownership.reason
-              ? [ownership.reason]
-              : undefined,
-        }
-      : undefined;
-    const result = await runAggregateRiskPipeline(
-      config,
-      publicClient,
-      walletClient,
-      {
+    try {
+      const result = await service.diagnose({
+        ...parsed.data,
         walletAddress: parsed.data.walletAddress as Address,
-        subjectId,
-        riskInput: parsed.data.riskInput
-          ? toBigIntRiskInput(parsed.data.riskInput)
-          : walletRisk!.riskInput,
-        sources: [
-          ...(ownershipSource ? [ownershipSource] : []),
-          ...(walletRisk?.sources ?? []),
-          ...clientRiskInputSource(parsed.data),
-          {
-            name: "PortfolioRiskEngine.computeRisk",
-            label: "VERIFIED",
-            chainId: config.robinhoodChainId,
-            blockNumber: latestBlock,
-            contractAddress: config.lpGuardianRiskEngineContract,
-          },
-        ],
-        ownership,
-        phalaAttestation: parsed.data.phalaAttestationHash
-          ? {
-              attestationHash: parsed.data.phalaAttestationHash as Hex,
-              verifier: config.phalaAttestationVerifier,
-              agentContract: config.phalaAgentContract,
-            }
-          : undefined,
-        requirePhala: parsed.data.requirePhala,
-        publishReport: parsed.data.publishReport,
-      },
-    );
+        riskInput: parsed.data.riskInput ? toBigIntRiskInput(parsed.data.riskInput) : undefined,
+        phalaAttestationHash: parsed.data.phalaAttestationHash as `0x${string}` | undefined,
+      });
 
-    return c.json(ok(toJsonSafe(result)));
+      return c.json(ok(toJsonSafe(result)));
+    } catch (err) {
+      const message = String(err);
+      if (message.includes("OWNERSHIP_MISMATCH")) {
+        return c.json(fail("OWNERSHIP_MISMATCH", message), 409);
+      }
+      if (message.includes("NO_POSITIONS")) {
+        return c.json(fail("NO_POSITIONS", message), 404);
+      }
+      return c.json(fail("INTERNAL_ERROR", message), 500);
+    }
+  });
+
+  route.post("/validate-ownership", async (c) => {
+    const body = await c.req.json().catch(() => undefined);
+    const schema = z.object({
+      walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+      tokenId: z.string().regex(/^\d+$/),
+    });
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) return c.json(fail("BAD_REQUEST", "Invalid payload"), 400);
+
+    try {
+      const result = await service.validateOwnership(
+        parsed.data.walletAddress as Address,
+        parsed.data.tokenId
+      );
+      return c.json(ok(toJsonSafe(result)));
+    } catch (err) {
+      return c.json(fail("INTERNAL_ERROR", String(err)), 500);
+    }
   });
 
   return route;
