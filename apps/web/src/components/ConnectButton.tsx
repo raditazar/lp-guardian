@@ -114,6 +114,16 @@ export function ConnectButton() {
                 type="button"
                 role="menuitem"
                 className="wallet-menu-action wallet-menu-action-copy"
+                style={{
+                  width: 40,
+                  minWidth: 40,
+                  minHeight: 40,
+                  flex: "0 0 40px",
+                  padding: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
                 onClick={() => void copyAddress()}
                 aria-label={copied ? "Address copied" : "Copy address"}
                 title={copied ? "Address copied" : "Copy address"}
