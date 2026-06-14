@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { ServerConfig } from "../../config.js";
+import { AgentStateStore } from "../agentStateStore.js";
 import { runFoundationAgents } from "../agentOrchestrator.js";
 import { PortfolioService } from "./portfolioService.js";
 import type { WalletRiskInputResult } from "./walletRiskInput.js";
@@ -112,8 +113,22 @@ export class MonitorService {
   private readonly alerts: MonitorAlert[] = [];
   private readonly portfolioService: PortfolioService;
 
-  constructor(private readonly config: ServerConfig) {
+  constructor(
+    private readonly config: ServerConfig,
+    private readonly stateStore = new AgentStateStore(),
+  ) {
     this.portfolioService = new PortfolioService(config);
+
+    const restored = this.stateStore.getMonitor();
+    restored.wallets.forEach((state) => {
+      this.states.set(normalizeWallet(state.walletAddress), state);
+    });
+    restored.watchedWallets.forEach((wallet) => {
+      this.watchedWallets.add(normalizeWallet(wallet));
+    });
+    this.alerts.push(...restored.alerts);
+
+    if (this.watchedWallets.size > 0 || this.states.size > 0) return;
 
     const demoWallets: Address[] = [
       "0xfd235968e65b0990584585763f837a5b5330e6de",
@@ -134,6 +149,7 @@ export class MonitorService {
     if (existing) {
       const next = { ...existing, watched: true };
       this.states.set(wallet, next);
+      this.persistMonitor();
       return next;
     }
 
@@ -145,6 +161,7 @@ export class MonitorService {
       issues: [],
     };
     this.states.set(wallet, state);
+    this.persistMonitor();
     return state;
   }
 
@@ -156,6 +173,7 @@ export class MonitorService {
 
     const next = { ...existing, watched: false };
     this.states.set(wallet, next);
+    this.persistMonitor();
     return next;
   }
 
@@ -205,6 +223,16 @@ export class MonitorService {
     if (this.alerts.length > MAX_ALERT_HISTORY) {
       this.alerts.length = MAX_ALERT_HISTORY;
     }
+  }
+
+  private persistMonitor(): void {
+    this.stateStore.putMonitor({
+      watchedWallets: Array.from(this.watchedWallets).sort(),
+      wallets: Array.from(this.states.values()).sort((left, right) =>
+        left.walletAddress.localeCompare(right.walletAddress),
+      ),
+      alerts: [...this.alerts],
+    });
   }
 
   private async tick(): Promise<void> {
@@ -264,6 +292,7 @@ export class MonitorService {
         riskInput: riskInputWire(risk),
         scan: scanWire(risk),
       });
+      this.persistMonitor();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const previous = this.states.get(wallet);
@@ -286,6 +315,7 @@ export class MonitorService {
         lastError: message,
         issues: previous?.issues ?? [],
       });
+      this.persistMonitor();
     }
   }
 }

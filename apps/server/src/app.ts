@@ -14,9 +14,11 @@ import { createPositionsRoute } from "./routes/positions.js";
 import { createReportRoute } from "./routes/report.js";
 import { createPortfolioRoute } from "./routes/portfolio.js";
 import { AgentOrchestrator } from "./services/agentOrchestrator.js";
+import { AgentStateStore } from "./services/agentStateStore.js";
 import { MonitorService } from "./services/portfolio/monitorService.js";
 
 export interface AppServices {
+  agentStateStore?: AgentStateStore;
   monitorService?: MonitorService;
   agentOrchestrator?: AgentOrchestrator;
 }
@@ -24,9 +26,12 @@ export interface AppServices {
 export function createApp(config: ServerConfig, services: AppServices = {}): Hono {
   const app = new Hono();
   const agentRuntime = createAgentRuntime(config);
-  const monitorService = services.monitorService ?? new MonitorService(config);
+  const agentStateStore = services.agentStateStore ?? new AgentStateStore();
+  const monitorService =
+    services.monitorService ?? new MonitorService(config, agentStateStore);
   const agentOrchestrator =
-    services.agentOrchestrator ?? new AgentOrchestrator(config, monitorService);
+    services.agentOrchestrator ??
+    new AgentOrchestrator(config, monitorService, agentStateStore);
 
   app.use("*", requestContext());
   app.use("*", requestLogger());

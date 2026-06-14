@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { AgentRunStatus, AgentType } from "@lp-guardian/core";
 import type { Address, Hex } from "viem";
 import { z } from "zod";
 import { fail, ok } from "../../http/responses.js";
@@ -39,6 +40,50 @@ export function createAgentOrchestrationRoute(
 ): Hono {
   const route = new Hono();
 
+  route.get("/runs", (c) => {
+    const walletAddress = c.req.query("walletAddress");
+    const targetAgent = c.req.query("targetAgent");
+    const status = c.req.query("status");
+    const limit = c.req.query("limit");
+
+    const parsedWallet = walletAddress
+      ? z.string().regex(/^0x[a-fA-F0-9]{40}$/).safeParse(walletAddress)
+      : undefined;
+    if (parsedWallet && !parsedWallet.success) {
+      return c.json(fail("BAD_REQUEST", "walletAddress must be an EVM address."), 400);
+    }
+
+    const parsedAgent = targetAgent
+      ? z.enum(["scan", "correlate", "simulate", "optimize", "execute", "monitor"]).safeParse(targetAgent)
+      : undefined;
+    if (parsedAgent && !parsedAgent.success) {
+      return c.json(fail("BAD_REQUEST", "targetAgent is invalid."), 400);
+    }
+
+    const parsedStatus = status
+      ? z
+          .enum(["queued", "running", "waiting_for_user", "completed", "failed", "cancelled"])
+          .safeParse(status)
+      : undefined;
+    if (parsedStatus && !parsedStatus.success) {
+      return c.json(fail("BAD_REQUEST", "status is invalid."), 400);
+    }
+
+    const parsedLimit = limit ? Number(limit) : 50;
+    if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+      return c.json(fail("BAD_REQUEST", "limit must be an integer from 1 to 500."), 400);
+    }
+
+    return c.json(ok({
+      runs: orchestrator.listRuns({
+        walletAddress: parsedWallet?.success ? parsedWallet.data as Address : undefined,
+        targetAgent: parsedAgent?.success ? parsedAgent.data as AgentType : undefined,
+        status: parsedStatus?.success ? parsedStatus.data as AgentRunStatus : undefined,
+        limit: parsedLimit,
+      }),
+    }));
+  });
+
   route.post("/run", async (c) => {
     const body = await c.req.json().catch(() => undefined);
     const parsed = orchestrationRunSchema.safeParse(body);
@@ -72,6 +117,30 @@ export function createAgentOrchestrationRoute(
       correlationId: c.req.param("correlationId"),
       messages: orchestrator.getMessages(c.req.param("correlationId")),
     }));
+  });
+
+  route.get("/stream/:correlationId", (c) => {
+    const messages = orchestrator.getMessages(c.req.param("correlationId"));
+    const body = [
+      ...messages.map((message) => {
+        return [
+          `event: ${message.topic}`,
+          `id: ${message.id}`,
+          `data: ${JSON.stringify(message)}`,
+          "",
+        ].join("\n");
+      }),
+      "event: stream.complete",
+      `data: ${JSON.stringify({ correlationId: c.req.param("correlationId") })}`,
+      "",
+    ].join("\n");
+
+    return new Response(body, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+      },
+    });
   });
 
   return route;

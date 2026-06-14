@@ -8,6 +8,7 @@ import type {
 import type { Address, Hex } from "viem";
 import type { ServerConfig } from "../config.js";
 import type { FoundationRunRequest } from "../schemas/agent.js";
+import { AgentStateStore, type ListRunsFilter } from "./agentStateStore.js";
 import { MonitorService } from "./portfolio/monitorService.js";
 import { PortfolioService } from "./portfolio/portfolioService.js";
 import type { WalletRiskInputResult } from "./portfolio/walletRiskInput.js";
@@ -264,6 +265,7 @@ export class AgentOrchestrator {
   constructor(
     config: ServerConfig,
     private readonly monitorService: MonitorService,
+    private readonly stateStore = new AgentStateStore(),
   ) {
     this.portfolioService = new PortfolioService(config);
     this.agents = {
@@ -274,14 +276,29 @@ export class AgentOrchestrator {
       execute: new ExecuteAgent(),
       monitor: new MonitorAgent(monitorService),
     };
+
+    for (const storedRun of this.stateStore.listRuns()) {
+      this.runs.set(storedRun.run.id, storedRun);
+      this.messagesByCorrelationId.set(
+        storedRun.run.correlationId,
+        storedRun.messages,
+      );
+    }
+  }
+
+  listRuns(filter: ListRunsFilter = {}): StoredAgentRun[] {
+    return this.stateStore.listRuns(filter);
   }
 
   getRun(runId: string): StoredAgentRun | undefined {
-    return this.runs.get(runId);
+    return this.runs.get(runId) ?? this.stateStore.getRun(runId);
   }
 
   getMessages(correlationId: string): AgentMessage[] {
-    return this.messagesByCorrelationId.get(correlationId) ?? [];
+    return (
+      this.messagesByCorrelationId.get(correlationId) ??
+      this.stateStore.getMessages(correlationId)
+    );
   }
 
   async run(input: AgentOrchestrationInput): Promise<AgentOrchestrationResult> {
@@ -351,8 +368,10 @@ export class AgentOrchestrator {
     };
 
     const result = { run, messages };
-    this.runs.set(run.id, { ...result, input });
+    const storedRun = { ...result, input };
+    this.runs.set(run.id, storedRun);
     this.messagesByCorrelationId.set(correlationId, messages);
+    this.stateStore.putRun(storedRun);
     return result;
   }
 }
