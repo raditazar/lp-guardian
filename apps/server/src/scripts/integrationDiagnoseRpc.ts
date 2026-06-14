@@ -1,6 +1,6 @@
 import { loadConfig, loadLocalEnv } from "../config.js";
-import { runDiagnosticPipeline } from "../pipeline/runDiagnosticPipeline.js";
-import { createAgentRuntime } from "../services/agentRuntime/index.js";
+import { PortfolioService } from "../services/portfolio/portfolioService.js";
+import type { Address } from "viem";
 
 /**
  * Integration test script that uses real RPC to run the full diagnostic pipeline.
@@ -9,41 +9,32 @@ import { createAgentRuntime } from "../services/agentRuntime/index.js";
 async function main() {
   loadLocalEnv();
   const config = loadConfig();
-  const agentRuntime = createAgentRuntime(config);
+  const service = new PortfolioService(config);
   
-  const tokenId = process.argv[2] ?? "1"; // Default to tokenId 1
-  const walletAddress = "0x0000000000000000000000000000000000000000";
+  const tokenId = process.argv[2] ?? "225";
+  const walletAddress = "0x536A844Ef215dD8A13a06023F24a568e4Ee3cB6B";
 
-  console.log(`[integration] Running diagnostic for TokenId: ${tokenId} on Arbitrum...`);
-  console.log(`[integration] RPC: ${config.arbitrumRpcUrl ? "CONFIGURED" : "MISSING"}`);
+  console.log(`[integration] Running diagnostic for TokenId: ${tokenId} on Robinhood...`);
+  console.log(`[integration] Wallet: ${walletAddress}`);
 
   try {
-    for await (const event of runDiagnosticPipeline(config, tokenId, {
-      agentRuntime,
-      foundationInput: { walletAddress, scenario: "basic" },
-    })) {
-      if (event.type === "phase.start") {
-        console.log(`\n>>> Phase ${event.phase}: ${event.label}`);
-      } else if (event.type === "tool.call") {
-        console.log(`    [Tool] ${event.tool} calling...`);
-      } else if (event.type === "tool.result") {
-        console.log(`    [Tool] ${event.tool} returned in ${event.latencyMs}ms`);
-      } else if (event.type === "narrative") {
-        console.log(`    [Narrative] ${event.text}`);
-      } else if (event.type === "agent.advice") {
-        console.log(`    [Agent] Recommendation: ${event.recommendation} (Confidence: ${event.confidence})`);
-        console.log(`    [Agent] Rationale: ${event.rationale}`);
-      } else if (event.type === "report.uploaded") {
-        console.log(`    [Storage] Uploaded. RootHash: ${event.rootHash}`);
-      } else if (event.type === "report.anchored") {
-        console.log(`    [Chain] Anchored. TxHash: ${event.txHash}`);
-      } else if (event.type === "verdict.final") {
-        console.log(`\n=== FINAL VERDICT ===`);
-        console.log(event.markdown);
-      } else if (event.type === "error") {
-        console.error(`\n!!! ERROR: ${event.message}`);
-      }
+    const result = await service.diagnose({
+      walletAddress: walletAddress as Address,
+      tokenId,
+      publishReport: true,
+    });
+
+    console.log("\n=== DIAGNOSIS COMPLETE ===");
+    console.log(`Root Hash: ${result.report.rootHash}`);
+    console.log(`Attestation Hash: ${result.attestationHash}`);
+    console.log(`Anchor Status: ${result.anchor.status}`);
+    if (result.anchor.status === "published") {
+      console.log(`Tx Hash: ${result.anchor.txHash}`);
     }
+
+    console.log("\n=== FINAL VERDICT ===");
+    console.log(result.report.payload.verdict.markdown);
+
     console.log(`\n[integration] Pipeline completed successfully.`);
   } catch (err) {
     console.error(`\n[integration] Pipeline failed:`, err);
@@ -55,3 +46,4 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
