@@ -66,7 +66,7 @@ export function PositionCard({ position }: Props) {
 
   return (
     <Link
-      to={`/diagnose/${position.id}`}
+      to={`/diagnose/${position.id}?walletAddress=${encodeURIComponent(position.owner)}`}
       className="atlas-card"
       aria-label={`Diagnose ${pool.token0.symbol}/${pool.token1.symbol} position ${position.id}`}
     >

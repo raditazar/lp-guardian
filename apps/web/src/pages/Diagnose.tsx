@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { AppHeader } from "../components/AppHeader.js";
 import { ILPanel, type ILBreakdown } from "../components/ILPanel.js";
@@ -48,6 +48,23 @@ interface ResolvedPositionOutput {
   tickLower: number;
   tickUpper: number;
   liquidity: string;
+  source?: "onchain" | "mock";
+  label?: Label;
+  ownership?: {
+    requestedWallet?: string;
+    owner: string;
+    status: "verified" | "mismatch" | "unavailable" | "not-requested";
+    label: Label;
+  };
+}
+
+interface OwnershipValidationOutput {
+  status: "verified" | "mismatch" | "unavailable";
+  walletAddress: string;
+  tokenId: string;
+  ownerAddress?: string;
+  reason?: string;
+  label?: Label;
 }
 
 const PHASES = [
@@ -117,10 +134,12 @@ function compactHash(value: string): string {
 
 export function Diagnose() {
   const { tokenId } = useParams<{ tokenId: string }>();
+  const [searchParams] = useSearchParams();
   const { address } = useAccount();
+  const walletAddress = searchParams.get("walletAddress") ?? address;
   const { events, status, error } = useDiagnosticStream(
     tokenId ?? null,
-    address,
+    walletAddress,
   );
 
   const toolEvents = events.filter(
@@ -135,6 +154,7 @@ export function Diagnose() {
   );
 
   const resolved  = pickToolResult<ResolvedPositionOutput>(events, "getV3Position");
+  const ownership = pickToolResult<OwnershipValidationOutput>(events, "validateOwnership");
   const ilBreakdown = pickToolResult<ILBreakdown>(events, "computeIL");
   const regime    = pickToolResult<RegimeClassification>(events, "classifyRegime");
   const hooks     = pickToolResult<HookDiscoveryResult>(events, "discoverV4Hooks");
@@ -155,7 +175,8 @@ export function Diagnose() {
 
   const labels = useMemo(() => {
     const out: Label[] = [];
-    if (resolved)   out.push("VERIFIED");
+    if (ownership)  out.push(ownership.label ?? (ownership.status === "verified" ? "VERIFIED" : "EMULATED"));
+    if (resolved)   out.push(resolved.label ?? "EMULATED");
     if (ilBreakdown) out.push("COMPUTED");
     if (regime)     out.push("ESTIMATED");
     if (hooks)      out.push("LABELED");
@@ -163,7 +184,7 @@ export function Diagnose() {
     if (provenance) out.push(provenanceFullyVerified ? "VERIFIED" : "EMULATED");
     if (verdict)    out.push(verdict.stub ? "EMULATED" : "ESTIMATED");
     return out;
-  }, [resolved, ilBreakdown, regime, hooks, migration, provenance, provenanceFullyVerified, verdict]);
+  }, [ownership, resolved, ilBreakdown, regime, hooks, migration, provenance, provenanceFullyVerified, verdict]);
 
   const completed  = PHASES.filter((p) => phaseState(events, p.phase) === "complete").length;
   const activePhase = PHASES.find((p) => phaseState(events, p.phase) === "active");

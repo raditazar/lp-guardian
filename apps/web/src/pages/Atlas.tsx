@@ -6,7 +6,7 @@ import { AggStat } from "../components/AggStat.js";
 import { PositionCard } from "../components/PositionCard.js";
 import { Mono } from "../design/atoms.js";
 import { shortAddr } from "../design/atoms.js";
-import { fetchPositions, type V3PositionRaw } from "../lib/api.js";
+import { fetchPortfolioPositions, type V3PositionRaw } from "../lib/api.js";
 import { classifyHealth } from "../lib/health.js";
 import "../styles/atlas.css";
 
@@ -98,7 +98,7 @@ export function Atlas() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["positions", submitted],
-    queryFn:  () => fetchPositions(submitted!),
+    queryFn:  () => fetchPortfolioPositions(submitted!),
     enabled:  !!submitted,
   });
 

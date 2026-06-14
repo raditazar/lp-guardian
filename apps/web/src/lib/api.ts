@@ -46,7 +46,26 @@ export interface V3PositionRaw {
 export interface PositionsResponse {
   address: string;
   version: number;
+  source?: string;
+  chainId?: number;
   positions: V3PositionRaw[];
+  portfolioRiskInput?: {
+    totalPositions: string;
+    outOfRangePositions: string;
+    dustPositions: string;
+    correlatedExposureBps: string;
+    concentrationBps: string;
+  };
+  sources?: Array<{
+    name: string;
+    label: string;
+    notes?: string[];
+  }>;
+}
+
+interface ApiSuccess<T> {
+  status: "ok";
+  data: T;
 }
 
 export interface HealthResponse {
@@ -62,6 +81,15 @@ export async function fetchPositions(
   const r = await fetch(`${API_BASE_URL}/api/positions/${address}`);
   if (!r.ok) throw new Error(`positions ${r.status}`);
   return r.json();
+}
+
+export async function fetchPortfolioPositions(
+  address: string,
+): Promise<PositionsResponse> {
+  const r = await fetch(`${API_BASE_URL}/api/portfolio/${address}/positions`);
+  if (!r.ok) throw new Error(`portfolio positions ${r.status}`);
+  const body = (await r.json()) as ApiSuccess<PositionsResponse>;
+  return body.data;
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

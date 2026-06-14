@@ -1,9 +1,10 @@
 import { keccak256, stringToHex, type Hex } from "viem";
 import type { PortfolioRiskInput, PortfolioRiskResult } from "../robinhood/riskEngine.js";
+import type { OwnershipValidationResult } from "../ownership.js";
 
 export interface PortfolioReportSource {
   name: string;
-  label: "VERIFIED" | "UNAVAILABLE";
+  label: "VERIFIED" | "COMPUTED" | "UNAVAILABLE" | "EMULATED";
   chainId?: number;
   blockNumber?: bigint;
   contractAddress?: string;
@@ -16,6 +17,7 @@ export interface PortfolioReportPayload {
   walletAddress: string;
   subjectId: string;
   chainId: number;
+  ownership?: OwnershipValidationResult;
   riskInput: PortfolioRiskInput;
   riskOutput: PortfolioRiskResult;
   sources: PortfolioReportSource[];

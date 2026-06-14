@@ -43,7 +43,7 @@ function parseCli(): CliOptions {
     wallet: parseWallet(readArg("wallet")),
     fromBlock: parseBlock(readArg("from-block")),
     toBlock: parseBlock(readArg("to-block")),
-    chunkSize: BigInt(readArg("chunk-size") ?? "50000"),
+    chunkSize: BigInt(readArg("chunk-size") ?? "0"),
   };
 }
 
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     walletAddress: cli.wallet,
     fromBlock: cli.fromBlock ?? config.robinhoodScanFromBlock ?? 0n,
     toBlock: cli.toBlock ?? latestBlock,
-    chunkSize: cli.chunkSize,
+    chunkSize: cli.chunkSize > 0n ? cli.chunkSize : config.robinhoodScanChunkSize,
   });
 
   console.log(JSON.stringify(result, jsonReplacer, 2));

@@ -15,12 +15,14 @@ import {
   type HashedPortfolioReport,
   type PortfolioReportSource,
 } from "./report.js";
+import type { OwnershipValidationResult } from "../ownership.js";
 
 export interface AggregateRiskPipelineInput {
   walletAddress: Address;
   subjectId: bigint;
   riskInput: PortfolioRiskInput;
   sources: PortfolioReportSource[];
+  ownership?: OwnershipValidationResult;
   phalaAttestation?: {
     attestationHash: Hex;
     verifier?: string;
@@ -75,6 +77,7 @@ export async function runAggregateRiskPipeline(
     walletAddress: input.walletAddress,
     subjectId: input.subjectId.toString(),
     chainId: config.robinhoodChainId ?? 46630,
+    ownership: input.ownership,
     riskInput: input.riskInput,
     riskOutput,
     sources: input.sources,
