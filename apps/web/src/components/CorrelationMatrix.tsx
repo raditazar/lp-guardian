@@ -34,7 +34,7 @@ export function CorrelationMatrix() {
           High correlation (&gt; 0.8) indicates concentrated risk exposure to a single market movement.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: \`50px repeat(\${ASSETS.length}, 1fr)\`, gap: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `50px repeat(${ASSETS.length}, 1fr)`, gap: 4 }}>
           {/* Header Row */}
           <div></div>
           {ASSETS.map(a => (
@@ -51,7 +51,7 @@ export function CorrelationMatrix() {
               </div>
               {row.map((val, j) => (
                 <div
-                  key={\`\${i}-\${j}\`}
+                  key={`${i}-${j}`}
                   style={{
                     background: getHeatColor(val),
                     border: "1px solid var(--lp-border-soft)",
