@@ -3,6 +3,8 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createApp } from "../app.js";
 import { loadConfig, loadLocalEnv } from "../config.js";
+import { AgentStateStore } from "../services/agentStateStore.js";
+import type { StoredAgentRun } from "../services/agentOrchestrator.js";
 
 loadLocalEnv();
 
@@ -45,9 +47,9 @@ async function readFirstSseEvent(response: Response): Promise<string> {
   }
 }
 
-async function waitForCompletedRun(runId: string): Promise<any> {
+async function waitForCompletedRun(targetApp: typeof app, runId: string): Promise<any> {
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const response = await app.request(`/agent/orchestration/run/${runId}`);
+    const response = await targetApp.request(`/agent/orchestration/run/${runId}`);
     assert.equal(response.status, 200);
     const body = await json(response);
     const run = body.data;
@@ -88,7 +90,7 @@ assert.equal(secondEnqueue.status, 202);
 const secondBody = await json(secondEnqueue);
 assert.equal(firstBody.data.run.id, secondBody.data.run.id);
 
-const storedRun = await waitForCompletedRun(firstBody.data.run.id);
+const storedRun = await waitForCompletedRun(app, firstBody.data.run.id);
 assert.equal(storedRun.meta.steps.monitor.status, "completed");
 assert.equal(storedRun.meta.steps.monitor.attempts, 1);
 
@@ -132,6 +134,69 @@ assert.equal(
 );
 await deadLetterStream.body?.cancel().catch(() => undefined);
 
+const resumeStore = new AgentStateStore(
+  join(".lp-guardian", `smoke-agent-resume-${Date.now()}.json`),
+);
+const resumeRunId = `run__resume__${Date.now()}`;
+const resumeCorrelationId = `correlation__resume__${Date.now()}`;
+const resumeMessageId = `msg__resume__${Date.now()}`;
+const startedAt = Date.now();
+const resumeRun: StoredAgentRun = {
+  input: {
+    walletAddress,
+    targetAgent: "monitor",
+    idempotencyKey: `resume-${idempotencyKey}`,
+  },
+  run: {
+    id: resumeRunId,
+    status: "queued",
+    startedAt,
+    currentAgent: "monitor",
+    correlationId: resumeCorrelationId,
+  },
+  messages: [
+    {
+      id: resumeMessageId,
+      timestamp: startedAt,
+      source: "monitor",
+      target: "all",
+      topic: "portfolio.alert",
+      correlationId: resumeCorrelationId,
+      payload: {
+        walletAddress,
+        status: "unknown",
+        watched: true,
+        resumedFromSmoke: true,
+      },
+    },
+  ],
+  meta: {
+    idempotencyKey: `resume-${idempotencyKey}`,
+    attempts: 0,
+    maxAttempts: 3,
+    steps: {
+      monitor: {
+        agent: "monitor",
+        status: "completed",
+        attempts: 1,
+        maxAttempts: 2,
+        startedAt,
+        completedAt: startedAt,
+        outputMessageId: resumeMessageId,
+      },
+    },
+  },
+};
+resumeStore.putRun(resumeRun);
+const resumeApp = createApp(loadConfig(), {
+  agentStateStore: resumeStore,
+});
+const resumedRun = await waitForCompletedRun(resumeApp, resumeRunId);
+assert.equal(resumedRun.run.status, "completed");
+assert.equal(resumedRun.meta.steps.monitor.status, "completed");
+assert.equal(resumedRun.meta.steps.monitor.attempts, 1);
+assert.equal(resumedRun.messages.length, 1);
+
 console.log(JSON.stringify({
   assertions: {
     monitorWalletStream: true,
@@ -142,6 +207,7 @@ console.log(JSON.stringify({
     queueSnapshot: true,
     deadLetterList: true,
     deadLetterStream: true,
+    restartResumeSkipsCompletedStep: true,
   },
   runId: storedRun.run.id,
   correlationId: storedRun.run.correlationId,

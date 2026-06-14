@@ -22,6 +22,7 @@ import { MonitorService } from "./portfolio/monitorService.js";
 import { PortfolioService } from "./portfolio/portfolioService.js";
 import type { WalletRiskInputResult } from "./portfolio/walletRiskInput.js";
 import type { AggregateRiskPipelineResult } from "./portfolio/aggregateRiskPipeline.js";
+import type { PortfolioRiskInput } from "./robinhood/riskEngine.js";
 
 export type FoundationRunMode = "mock" | "eliza";
 
@@ -138,6 +139,44 @@ function pendingStep(agent: AgentType): AgentStepProgress {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function bigintFromWire(value: unknown): bigint | undefined {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number" && Number.isInteger(value)) return BigInt(value);
+  if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value);
+  return undefined;
+}
+
+function riskInputFromWire(value: unknown): PortfolioRiskInput | undefined {
+  if (!isRecord(value)) return undefined;
+  const totalPositions = bigintFromWire(value.totalPositions);
+  const outOfRangePositions = bigintFromWire(value.outOfRangePositions);
+  const dustPositions = bigintFromWire(value.dustPositions);
+  const correlatedExposureBps = bigintFromWire(value.correlatedExposureBps);
+  const concentrationBps = bigintFromWire(value.concentrationBps);
+
+  if (
+    totalPositions === undefined ||
+    outOfRangePositions === undefined ||
+    dustPositions === undefined ||
+    correlatedExposureBps === undefined ||
+    concentrationBps === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    totalPositions,
+    outOfRangePositions,
+    dustPositions,
+    correlatedExposureBps,
+    concentrationBps,
+  };
+}
+
 function ensureMeta(
   storedRun: StoredAgentRun,
   sequence: AgentType[],
@@ -165,6 +204,90 @@ function ensureMeta(
   }
 
   return storedRun.meta;
+}
+
+function findStepMessage(
+  storedRun: StoredAgentRun,
+  agentType: AgentType,
+): AgentMessage | undefined {
+  const outputMessageId = storedRun.meta?.steps?.[agentType]?.outputMessageId;
+  if (outputMessageId) {
+    const byId = storedRun.messages.find((message) => message.id === outputMessageId);
+    if (byId) return byId;
+  }
+
+  const expectedTopic = topicForAgent(agentType);
+  return [...storedRun.messages]
+    .reverse()
+    .find(
+      (message) =>
+        message.source === agentType && message.topic === expectedTopic,
+    );
+}
+
+function hydrateCompletedStepContext(
+  storedRun: StoredAgentRun,
+  context: AgentContext,
+  agentType: AgentType,
+): boolean {
+  const message = findStepMessage(storedRun, agentType);
+
+  switch (agentType) {
+    case "scan": {
+      const payload = isRecord(message?.payload) ? message.payload : undefined;
+      const riskInput = riskInputFromWire(payload?.riskInput);
+      if (!riskInput) return false;
+
+      context.scan = {
+        riskInput,
+        sources: Array.isArray(payload?.sources) ? payload.sources : [],
+        scan: {
+          walletAddress: context.input.walletAddress,
+          nfpmAddress: "0x0000000000000000000000000000000000000000",
+          fromBlock: 0n,
+          toBlock: 0n,
+          transfers: [],
+          candidateTokenIds: Array.isArray(payload?.currentlyOwnedTokenIds)
+            ? payload.currentlyOwnedTokenIds.map((id) => BigInt(String(id)))
+            : [],
+          positions: [],
+          currentlyOwnedTokenIds: Array.isArray(payload?.currentlyOwnedTokenIds)
+            ? payload.currentlyOwnedTokenIds.map((id) => BigInt(String(id)))
+            : [],
+          movedOutTokenIds: [],
+        },
+        poolState: {
+          positions: [],
+          source: {
+            status: "unavailable",
+            reason: "Rehydrated from completed ScanAgent message.",
+          },
+        },
+      } as unknown as WalletRiskInputResult;
+      return true;
+    }
+    case "simulate": {
+      const payload = isRecord(message?.payload) ? message.payload : undefined;
+      if (!payload?.riskOutput || !payload?.reportRoot) return false;
+
+      context.diagnosis = {
+        report: {
+          rootHash: payload.reportRoot,
+          payload: {
+            riskOutput: payload.riskOutput,
+          },
+        },
+        attestationHash: payload.attestationHash,
+        anchor: payload.anchor,
+      } as AggregateRiskPipelineResult;
+      return true;
+    }
+    case "correlate":
+    case "optimize":
+    case "execute":
+    case "monitor":
+      return true;
+  }
 }
 
 function topicForAgent(agent: AgentType): AgentTopic {
@@ -629,6 +752,26 @@ export class AgentOrchestrator {
         this.persistRun(storedRun);
         this.emitRun(storedRun, "agent.run.running");
 
+        const step = storedRun.meta?.steps?.[agentType];
+        if (step?.status === "completed") {
+          const hydrated = hydrateCompletedStepContext(storedRun, context, agentType);
+          if (hydrated) {
+            this.emit(storedRun.run.correlationId, {
+              event: "agent.step.resumed",
+              id: `${storedRun.run.id}:${agentType}:resumed`,
+              data: {
+                runId: storedRun.run.id,
+                correlationId: storedRun.run.correlationId,
+                agent: agentType,
+                outputMessageId: step.outputMessageId,
+              },
+            });
+          } else {
+            meta.steps![agentType] = pendingStep(agentType);
+            this.persistRun(storedRun);
+          }
+        }
+
         await this.executeAgentStep(storedRun, context, agentType);
 
         if (
@@ -750,6 +893,15 @@ export class AgentOrchestrator {
       ...(meta.steps ?? {}),
       [agentType]: step,
     };
+
+    if (step.status === "completed") {
+      const hydrated = hydrateCompletedStepContext(storedRun, context, agentType);
+      if (hydrated) return;
+
+      step = pendingStep(agentType);
+      meta.steps[agentType] = step;
+      this.persistRun(storedRun);
+    }
 
     while (step.attempts < step.maxAttempts) {
       step.status = "running";
