@@ -89,15 +89,15 @@ const PHASES = [
   { n: "06", name: "hook.replay (1k swaps)",     label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "07", name: "migration.preview",          label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "10", name: "verdict.synthesize (TEE)",   label: "ESTIMATED", color: "var(--lp-toxic)" },
-  { n: "08", name: "report.upload (0G Storage)", label: "VERIFIED",  color: "var(--lp-cobalt)" },
-  { n: "09", name: "anchor.0g-chain + iNFT",     label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "08", name: "report.upload (IPFS/Storage)", label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "09", name: "anchor.robinhood-chain + iNFT",     label: "VERIFIED",  color: "var(--lp-cobalt)" },
 ];
 
-/* TODO(arch): 0G tech stack labels retained — revise after backend redesign for Robinhood Chain */
+/* TODO(arch): tech stack labels */
 const STACK = [
-  { name: "0G Storage",    role: "Blob anchoring for signed reports",          variant: "cobalt" as StickerVariant },
-  { name: "0G Chain",      role: "On-chain anchor tx + iNFT state",            variant: "cobalt" as StickerVariant },
-  { name: "0G Compute",    role: "TEE execution — verdict signed inside enclave", variant: "cobalt" as StickerVariant },
+  { name: "Storage",       role: "Blob anchoring for signed reports",          variant: "cobalt" as StickerVariant },
+  { name: "Robinhood Chain", role: "On-chain anchor tx + iNFT state",            variant: "cobalt" as StickerVariant },
+  { name: "TEE",           role: "TEE execution — verdict signed inside enclave", variant: "cobalt" as StickerVariant },
   { name: "ERC-7857",      role: "iNFT agent identity — memoryRoot on chain",  variant: "magenta" as StickerVariant },
   { name: "Uniswap V4",    role: "Hook discovery + swap replay against hooks", variant: "purple" as StickerVariant },
   { name: "Agent Memory",  role: "ERC-7857 memoryRoot + reputation updated on-chain", variant: "purple" as StickerVariant },
@@ -105,37 +105,37 @@ const STACK = [
   { name: "Permit2",       role: "EIP-712 migration bundle — user keeps custody", variant: "magenta" as StickerVariant },
 ];
 
-const OG_INTEGRATIONS = [
+const INTEGRATIONS = [
   {
     index: "A",
-    title: "0G Storage for signed reports",
-    body: "Every diagnosis uploads a JSON report blob via the 0G Storage DA layer. The returned URL is the first element of the verification chain — anyone can re-fetch it without LP Guardian's server.",
+    title: "Storage for signed reports",
+    body: "Every diagnosis uploads a JSON report blob via IPFS/Storage DA layer. The returned URL is the first element of the verification chain — anyone can re-fetch it without LP Guardian's server.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "B",
-    title: "0G Chain anchor tx",
+    title: "Robinhood Chain anchor tx",
     body: "After upload, the agent submits an on-chain tx on Robinhood Chain storing the rootHash, storageUrl, tokenId, and verdict. The tx hash becomes the second verification path.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "C",
-    title: "0G Compute TEE attestation",
-    body: "The verdict is synthesized inside a 0G Compute provider with a broker-verifiable attestation report. No LP Guardian server is in the signing path — the TEE signs the hash before anchoring.",
+    title: "TEE attestation",
+    body: "The verdict is synthesized inside a TEE provider with a broker-verifiable attestation report. No LP Guardian server is in the signing path — the TEE signs the hash before anchoring.",
     color: "var(--lp-cobalt)",
   },
   {
     index: "D",
-    title: "ERC-7857 iNFT on Aristotle Mainnet",
+    title: "ERC-7857 iNFT on Robinhood Chain",
     body: "LP Guardian/01 is an autonomous agent NFT on Robinhood Chain. Its memoryRoot evolves per diagnosis, reputation increments per run, and migrationsTriggered bumps when users sign Permit2 bundles.",
     color: "var(--lp-magenta)",
   },
 ];
 
-/* TODO(arch): 0G verification labels retained — revise after backend redesign */
+/* TODO(arch): verification labels */
 const VERIFY_PATHS = [
-  { id: "A", label: "0G Storage URL",     method: "Re-fetch blob, hash the JSON, compare rootHash" },
-  { id: "B", label: "0G Chain anchor tx", method: "Read tx calldata or event, extract rootHash" },
+  { id: "A", label: "Storage URL",        method: "Re-fetch blob, hash the JSON, compare rootHash" },
+  { id: "B", label: "Robinhood Chain anchor tx", method: "Read tx calldata or event, extract rootHash" },
   { id: "C", label: "REST report cache",  method: "Fetch by rootHash from LP Guardian API and compare anchor fields" },
   { id: "D", label: "IPFS CID",           method: "Fetch via any IPFS gateway, recompute SHA-256" },
   { id: "E", label: "iNFT memoryRoot",    method: "agents(1).memoryRoot on Robinhood Chain = latest blob" },
@@ -187,7 +187,7 @@ export function Deck() {
           >
             An autonomous diagnostic agent for Uniswap V3 and V4 LPs. It explains
             why a position is bleeding, simulates V4 hooks against real swap history,
-            and publishes a verifiable signed report anchored to 0G Storage, 0G Chain,
+            and publishes a verifiable signed report anchored to Storage, Robinhood Chain,
             and an ERC-7857 iNFT.
           </p>
 
@@ -328,7 +328,7 @@ export function Deck() {
               {
                 n: "3",
                 title: "Anchor",
-                body: "Sign the verdict inside a 0G Compute TEE. Upload the report to 0G Storage. Anchor rootHash on 0G Chain. Update the ERC-7857 iNFT memoryRoot. Multiple independent verification paths, one rootHash.",
+                body: "Sign the verdict inside a TEE. Upload the report to Storage. Anchor rootHash on Robinhood Chain. Update the ERC-7857 iNFT memoryRoot. Multiple independent verification paths, one rootHash.",
                 color: "var(--lp-cobalt)",
               },
             ].map((c, i) => (
@@ -506,8 +506,8 @@ export function Deck() {
           </div>
         </SlideStage>
 
-        {/* ── Slide 6: Why 0G ───────────────────────────────────────────── */}
-        {/* TODO(arch): WHY 0G slide retained with Robinhood Chain branding — revise integration points after backend redesign */}
+        {/* ── Slide 6: Integration Points ───────────────────────────────────────────── */}
+        {/* TODO(arch): Revise integration points after backend redesign */}
         <SlideStage variant="band">
           <Cap style={{ marginBottom: 16 }}>WHY ROBINHOOD CHAIN · 4 INTEGRATION POINTS</Cap>
           <h2
@@ -532,7 +532,7 @@ export function Deck() {
               gap: 16,
             }}
           >
-            {OG_INTEGRATIONS.map((g) => (
+            {INTEGRATIONS.map((g) => (
               <div
                 key={g.index}
                 style={{

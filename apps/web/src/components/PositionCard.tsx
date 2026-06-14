@@ -50,6 +50,12 @@ function rangeFill(status: "healthy" | "drift" | "bleeding"): string {
   return "100%";
 }
 
+function isDustPosition(dep0: number, dep1: number): boolean {
+  // Heuristic for frontend demo: if both deposited amounts are extremely small,
+  // classify as "dust". In production, backend portfolioMetrics checks USD value < $100.
+  return dep0 < 0.0001 && dep1 < 0.0001;
+}
+
 export function PositionCard({ position }: Props) {
   const health = classifyHealth(position);
   const status = HEALTH_TO_STATUS[health];
@@ -63,6 +69,8 @@ export function PositionCard({ position }: Props) {
   const fee1 = parseFloat(position.collectedFeesToken1);
   const totalDeposited = dep0 + dep1;
   const totalFees = fee0 + fee1;
+
+  const isDust = isDustPosition(dep0, dep1);
 
   return (
     <Link
@@ -82,9 +90,16 @@ export function PositionCard({ position }: Props) {
       <div className="atlas-card-body">
         {/* Sticker row: health status left, fee tier right */}
         <div className="atlas-card-stickers">
-          <span className={`lp-sticker atlas-sticker-${status}`}>
-            {STICKER_LABEL[status]}
-          </span>
+          <div style={{ display: "flex", gap: 6 }}>
+            <span className={`lp-sticker atlas-sticker-${status}`}>
+              {STICKER_LABEL[status]}
+            </span>
+            {isDust && (
+              <span className="lp-sticker atlas-sticker-drift">
+                DUST
+              </span>
+            )}
+          </div>
           <span
             className="mono"
             style={{ fontSize: 10, color: "var(--lp-ink-ghost)", letterSpacing: "0.04em" }}

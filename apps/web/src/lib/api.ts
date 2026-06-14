@@ -43,10 +43,25 @@ export interface V3PositionRaw {
   };
 }
 
+export interface PortfolioRisk {
+  riskScoreBps: number;
+  riskTier: number; // 0=Healthy, 1=Amber, 2=Red
+  recommendedAction: number;
+  source: string;
+  metrics: {
+    totalPositions: number;
+    outOfRangePositions: number;
+    dustPositions: number;
+    correlatedExposureBps: number;
+    concentrationBps: number;
+  };
+}
+
 export interface PositionsResponse {
   address: string;
   version: number;
   positions: V3PositionRaw[];
+  portfolioRisk?: PortfolioRisk;
 }
 
 export interface HealthResponse {

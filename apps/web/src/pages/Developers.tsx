@@ -339,22 +339,22 @@ export function Developers() {
           today — hosted SSE on the roadmap.
         </p>
 
-        {/* Fact strip — replaces MetricCard hero grid */}
-        <div
-          style={{
-            display: "inline-flex",
-            gap: 0,
-            border: "1.5px solid var(--lp-border)",
-            borderRadius: 3,
-            overflow: "hidden",
-            boxShadow: "3px 3px 0 var(--lp-border)",
-          }}
-        >
-          {[
-            { label: "TOOLS", value: "6 total", sub: "1 ping · 3 gated · 2 free" },
-            { label: "LICENSE", value: "0.1 OG", sub: "24 h · 80/20 royalty" },
-            { label: "BACKEND", value: "Aristotle", sub: "0G Mainnet + Ethereum reads" },
-          ].map(({ label, value, sub }, i) => (
+          {/* TODO(arch): Storage labels */}
+          <div
+            style={{
+              display: "inline-flex",
+              gap: 0,
+              border: "1.5px solid var(--lp-border)",
+              borderRadius: 3,
+              overflow: "hidden",
+              boxShadow: "3px 3px 0 var(--lp-border)",
+            }}
+          >
+            {[
+              { label: "TOOLS", value: "6 total", sub: "1 ping · 3 gated · 2 free" },
+              { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
+              { label: "BACKEND", value: "Aristotle", sub: "Robinhood Chain + Arbitrum reads" },
+            ].map(({ label, value, sub }, i) => (
             <div
               key={label}
               style={{

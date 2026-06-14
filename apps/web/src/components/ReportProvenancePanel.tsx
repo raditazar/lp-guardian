@@ -120,14 +120,14 @@ export function ReportProvenancePanel({ provenance, anchor }: Props) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <p className="text-[10px] text-slate-500 flex-1">
-          {/* TODO(arch): 0G Storage / 0G Chain labels retained — revise after backend redesign for Robinhood Chain */}
+          {/* TODO(arch): Storage / Robinhood Chain labels */}
           {fullyVerified
-            ? "Report uploaded to 0G Storage and anchored on 0G Chain. Anyone can re-download the report from Storage and verify both the rootHash and the on-chain commitment."
+            ? "Report uploaded to IPFS/Storage and anchored on Robinhood Chain. Anyone can re-download the report from Storage and verify both the rootHash and the on-chain commitment."
             : storageIsStub
-              ? "Stub provenance — the agent emitted a deterministic fingerprint. Configure OG_STORAGE_PRIVATE_KEY and OG_ANCHOR_PRIVATE_KEY on the server to publish to 0G Storage and 0G Chain."
+              ? "Stub provenance — the agent emitted a deterministic fingerprint. Configure STORAGE_PRIVATE_KEY and ANCHOR_PRIVATE_KEY on the server to publish to IPFS and Robinhood Chain."
               : anchor
-                ? "Report uploaded to 0G Storage but anchor is a stub — configure OG_ANCHOR_PRIVATE_KEY to write the rootHash to 0G Chain."
-                : "Report uploaded to 0G Storage. The merkle rootHash is content-addressed — anchor will follow once phase 9 runs."}
+                ? "Report uploaded to Storage but anchor is a stub — configure ANCHOR_PRIVATE_KEY to write the rootHash to Robinhood Chain."
+                : "Report uploaded to Storage. The merkle rootHash is content-addressed — anchor will follow once phase 9 runs."}
         </p>
         <Link
           to={`/report/${rootHash}`}

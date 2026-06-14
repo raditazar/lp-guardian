@@ -33,9 +33,9 @@ const KIND_SYMBOL: Record<MigrationStep["kind"], string> = {
 };
 
 const KIND_COLOR: Record<MigrationStep["kind"], string> = {
-  close: "var(--diagnose-bleed)",
-  swap: "var(--diagnose-toxic)",
-  mint: "var(--diagnose-healthy)",
+  close: "var(--lp-bleed)",
+  swap: "var(--lp-toxic)",
+  mint: "var(--lp-healthy)",
 };
 
 function shortAddr(addr: string): string {
@@ -57,9 +57,9 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
       <section
         style={{
           background: "linear-gradient(180deg, oklch(0.995 0.006 300 / 0.96), oklch(0.972 0.014 300 / 0.98))",
-          border: "2px solid var(--diagnose-border)",
+          border: "2px solid var(--lp-border)",
           borderRadius: 3,
-          boxShadow: "var(--diagnose-shadow)",
+          boxShadow: "var(--lp-shadow)",
           overflow: "hidden",
         }}
       >
@@ -82,16 +82,16 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 margin: "0 0 14px",
                 fontFamily: "var(--font-mono)",
                 fontSize: 12,
-                color: "var(--diagnose-ink-soft)",
+                color: "var(--lp-ink-soft)",
                 lineHeight: 1.5,
               }}
             >
               target{" "}
-              <span style={{ color: "var(--diagnose-purple)", fontWeight: 700 }}>
+              <span style={{ color: "var(--lp-purple)", fontWeight: 700 }}>
                 {shortAddr(targetHook.address)}
               </span>{" "}
               &middot;{" "}
-              <span style={{ color: "var(--diagnose-ink)" }}>
+              <span style={{ color: "var(--lp-ink)" }}>
                 {targetHook.family.toLowerCase().replace(/_/g, "-")}
               </span>
             </p>
@@ -101,7 +101,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 margin: "0 0 14px",
                 fontFamily: "var(--font-mono)",
                 fontSize: 12,
-                color: "var(--diagnose-ink-faint)",
+                color: "var(--lp-ink-faint)",
               }}
             >
               no v4 target hook discovered for this pair
@@ -126,7 +126,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                   display: "flex",
                   gap: 10,
                   padding: "9px 12px",
-                  border: `1.5px solid var(--diagnose-border-mid)`,
+                  border: `1.5px solid var(--lp-border-mid)`,
                   borderRadius: 3,
                   background: "oklch(0.985 0.012 300 / 0.6)",
                   fontFamily: "var(--font-mono)",
@@ -150,12 +150,12 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                   {KIND_SYMBOL[step.kind]}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "var(--diagnose-ink)" }}>{step.description}</div>
+                  <div style={{ color: "var(--lp-ink)" }}>{step.description}</div>
                   {step.detail && (
                     <div
                       style={{
                         marginTop: 4,
-                        color: "var(--diagnose-ink-faint)",
+                        color: "var(--lp-ink-faint)",
                         fontSize: 10,
                         display: "flex",
                         flexWrap: "wrap",
@@ -164,7 +164,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                     >
                       {Object.entries(step.detail).map(([k, v]) => (
                         <span key={k}>
-                          <span style={{ color: "var(--diagnose-border-mid)", opacity: 0.7 }}>{k}=</span>
+                          <span style={{ color: "var(--lp-border-mid)", opacity: 0.7 }}>{k}=</span>
                           {v}
                         </span>
                       ))}
@@ -183,7 +183,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
                 gap: 1,
-                border: "1.5px solid var(--diagnose-border-mid)",
+                border: "1.5px solid var(--lp-border-mid)",
                 borderRadius: 3,
                 overflow: "hidden",
               }}
@@ -198,14 +198,14 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                   style={{
                     padding: "8px 10px",
                     background: "oklch(0.975 0.014 300 / 0.7)",
-                    borderRight: "1px solid var(--diagnose-border-soft)",
+                    borderRight: "1px solid var(--lp-border-soft)",
                     fontFamily: "var(--font-mono)",
                   }}
                 >
-                  <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--diagnose-ink-faint)" }}>
+                  <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--lp-ink-faint)" }}>
                     {label}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--diagnose-ink)", marginTop: 2 }}>{value}</div>
+                  <div style={{ fontSize: 12, color: "var(--lp-ink)", marginTop: 2 }}>{value}</div>
                 </div>
               ))}
             </div>
@@ -221,7 +221,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 borderRadius: 3,
                 background: "oklch(0.78 0.19 88 / 0.06)",
                 fontSize: 10,
-                color: "var(--diagnose-toxic)",
+                color: "var(--lp-toxic)",
                 lineHeight: 1.7,
                 fontFamily: "var(--font-mono)",
               }}
@@ -237,7 +237,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
             style={{
               marginTop: 14,
               paddingTop: 12,
-              borderTop: "1px solid var(--diagnose-border-soft)",
+              borderTop: "1px solid var(--lp-border-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -250,7 +250,7 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 margin: 0,
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                color: "var(--diagnose-ink-faint)",
+                color: "var(--lp-ink-faint)",
                 lineHeight: 1.6,
               }}
             >
@@ -267,22 +267,22 @@ export function MigrationPanel({ preview, lpTokenId }: Props) {
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: "0.06em",
-                color: "var(--diagnose-cobalt)",
+                color: "oklch(0.12 0.02 260)", /* Hard ink color for visibility */
                 background: "oklch(0.985 0.012 300)",
-                border: "2px solid var(--diagnose-cobalt)",
+                border: "2px solid var(--lp-cobalt)",
                 borderRadius: 2,
-                boxShadow: "3px 3px 0 var(--diagnose-cobalt)",
+                boxShadow: "3px 3px 0 var(--lp-cobalt)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
                 transition: "box-shadow 80ms ease-out, transform 80ms ease-out",
               }}
               onMouseEnter={(e) => {
                 if (!canMigrate) return;
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "1px 1px 0 var(--diagnose-cobalt)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "1px 1px 0 var(--lp-cobalt)";
                 (e.currentTarget as HTMLButtonElement).style.transform = "translate(2px, 2px)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = "3px 3px 0 var(--diagnose-cobalt)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = "3px 3px 0 var(--lp-cobalt)";
                 (e.currentTarget as HTMLButtonElement).style.transform = "";
               }}
             >

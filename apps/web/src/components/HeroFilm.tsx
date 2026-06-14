@@ -351,8 +351,8 @@ export function HeroFilm() {
               letterSpacing="0.16em"
               textAnchor="end"
             >
-              {/* TODO(arch): 0G Compute TEE label — revise after backend redesign for Robinhood Chain */}
-              SIGNED · 0G COMPUTE
+              {/* TODO(arch): TEE label */}
+              SIGNED · TEE ENCLAVE
             </text>
           </g>
         </svg>
