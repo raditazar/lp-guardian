@@ -8,11 +8,15 @@ import "../styles/landing.css";
 
 const REPO_BASE       = "https://github.com/raditazar/lp-guardian";
 const SOURCE_ARCHIVE  = `${REPO_BASE}/archive/refs/heads/main.zip`;
-const BACKEND_URL     = (import.meta.env.VITE_LPGUARDIAN_API_URL as string | undefined) ?? ""; // TODO(robinhood): set after backend deployment
-const AGENT_CONTRACT  = (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined) ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0";
-const REPORTS_CONTRACT = "0x9803be5349eedf7c28ac1914b743757ce043b7cc";
-const AGENT_TOKEN_ID  = (import.meta.env.VITE_LPGUARDIAN_AGENT_TOKEN_ID as string | undefined) ?? "1";
-const MAINNET_RPC     = ""; // TODO(robinhood): set Robinhood Chain RPC
+const envValue = (key: string, fallback = "") => {
+  const value = import.meta.env[key] as string | undefined;
+  return value?.trim() || fallback;
+};
+const BACKEND_URL      = envValue("VITE_LPGUARDIAN_API_URL", "http://localhost:3001");
+const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "<deploy LPGuardianAgent contract>");
+const REPORTS_CONTRACT = envValue("VITE_LPGUARDIAN_REPORTS_CONTRACT", "0x9803be5349eedf7c28ac1914b743757ce043b7cc");
+const AGENT_TOKEN_ID   = envValue("VITE_LPGUARDIAN_AGENT_TOKEN_ID", "1");
+const ROBINHOOD_RPC    = envValue("VITE_ROBINHOOD_RPC", "https://rpc.testnet.chain.robinhood.com");
 
 /* ─── Inline primitives ─────────────────────────────────────────────── */
 
@@ -178,45 +182,6 @@ interface ToolRow {
   description: string;
 }
 
-const TOOLS: ToolRow[] = [
-  {
-    name: "lpguardian.ping",
-    access: "FREE",
-    price: "FREE",
-    description: "Transport liveness check. Useful for confirming the MCP server is reachable before invoking product tools.",
-  },
-  {
-    name: "lpguardian.diagnose",
-    access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Runs the full LP Guardian pipeline on a tokenId and returns the structured verdict, provenance, and migration context.",
-  },
-  {
-    name: "lpguardian.preflight",
-    access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Lightweight health check for a position. Stops before the full verdict to answer whether a deeper diagnosis is warranted.",
-  },
-  {
-    name: "lpguardian.migrate",
-    access: "GATED",
-    price: "0.1 ETH / 24 h",
-    description: "Builds the Permit2 migration payload from a diagnosed report. Prepares typed data only — never submits a swap bundle.",
-  },
-  {
-    name: "lpguardian.lookupReport",
-    access: "FREE",
-    price: "FREE",
-    description: "Fetches a persisted report by rootHash from the backend cache so other agents can inspect a prior diagnosis.",
-  },
-  {
-    name: "lpguardian.lookupReportOnChain",
-    access: "FREE",
-    price: "FREE",
-    description: "Reads LPGuardianReports directly on Robinhood Chain to verify that a given rootHash was anchored on-chain.",
-  },
-];
-
 /* ─── Code strings ───────────────────────────────────────────────────── */
 
 const CODE_MINT = `# 1. set wallet + chain vars
@@ -255,7 +220,7 @@ const CODE_CLAUDE = `{
         "LPGUARDIAN_AGENT_CONTRACT": "${AGENT_CONTRACT}",
         "LPGUARDIAN_REPORTS_CONTRACT": "${REPORTS_CONTRACT}",
         "LPGUARDIAN_AGENT_TOKEN_ID": "${AGENT_TOKEN_ID}",
-        "OG_GALILEO_RPC": "${MAINNET_RPC}"
+        "ROBINHOOD_RPC": "${ROBINHOOD_RPC}"
       }
     }
   }
@@ -391,7 +356,7 @@ export function Developers() {
         >
           {[
             { label: "TOOLS", value: "6 total", sub: "1 ping · 5 product tools" },
-            { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
+            { label: "LICENSE", value: "0.1 OG", sub: "24 h · 80/20 royalty" },
             { label: "BACKEND", value: "Aristotle", sub: "Robinhood Chain + Arbitrum reads" },
           ].map(({ label, value, sub }, i) => (
             <div
@@ -631,8 +596,8 @@ export function Developers() {
           >
             <p style={{ margin: 0, fontFamily: "var(--font-sans)", fontSize: 12, color: "var(--lp-ink-soft)", lineHeight: 1.6, maxWidth: "64ch" }}>
               Add this entry to your Claude Desktop MCP config. The{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>OG_GALILEO_RPC</code>{" "}
-              key name is retained for backward compatibility — point its value at the Aristotle Mainnet RPC.
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-purple)" }}>ROBINHOOD_RPC</code>{" "}
+              value should point at your Robinhood Chain RPC.
             </p>
           </div>
           <CodePre>{CODE_CLAUDE}</CodePre>
@@ -672,7 +637,7 @@ export function Developers() {
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_diagnose</code>{" "}
               for a signed backend report flow and{" "}
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_monitor</code>{" "}
-              for an agent-readable snapshot. On-chain verification reads the mainnet{" "}
+              for an agent-readable snapshot. On-chain verification reads the Robinhood Chain{" "}
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-purple)" }}>LPGuardianReports</code>{" "}
               contract at{" "}
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-ink-faint)" }}>{REPORTS_CONTRACT}</code>{" "}
@@ -680,11 +645,11 @@ export function Developers() {
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link
-                to="/agent"
+                to="/atlas"
                 className="lp-btn-ghost"
                 style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", fontSize: 11 }}
               >
-                View iNFT live state <PixelArrow />
+                Run Atlas scanner <PixelArrow />
               </Link>
               <Link
                 to="/roadmap"

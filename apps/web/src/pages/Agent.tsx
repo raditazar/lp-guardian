@@ -2,7 +2,6 @@ import { type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader.js";
 import { Cap } from "../design/atoms.js";
-import { useAgentLiveState } from "../hooks/useAgentLiveState.js";
 import "../styles/landing.css";
 
 /* ─── Shared inline primitives ──────────────────────────────────────── */
@@ -63,16 +62,6 @@ function PixelArrow() {
   );
 }
 
-function shortHex(h: string, head = 10, tail = 6) {
-  if (!h || h.length <= head + tail + 1) return h;
-  return `${h.slice(0, head)}…${h.slice(-tail)}`;
-}
-
-function ts(unix: number) {
-  if (!unix) return "—";
-  return new Date(unix * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC";
-}
-
 /* ─── MCP tool manifest ──────────────────────────────────────────────── */
 
 const CURRENT_MCP_TOOLS = [
@@ -84,11 +73,6 @@ const CURRENT_MCP_TOOLS = [
 ];
 
 export function Agent() {
-  const { data, loading, error } = useAgentLiveState();
-
-  const explorerBase = ""; // TODO(robinhood): set Robinhood Chain explorer
-  const contractUrl  = `${explorerBase}/address/${data?.contract ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0"}`;
-
   return (
     <div className="landing-theme" style={{ minHeight: "100vh" }}>
       <div className="lp-grid-bg" />
@@ -107,7 +91,7 @@ export function Agent() {
       >
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24, flexWrap: "wrap", marginBottom: 16 }}>
           <StickerBadge variant="magenta">ERC-7857</StickerBadge>
-          <StickerBadge variant="cobalt">ARISTOTLE MAINNET</StickerBadge>
+          <StickerBadge variant="cobalt">ROBINHOOD CHAIN</StickerBadge>
           <StickerBadge variant="yellow">LIVE · ONCHAIN</StickerBadge>
         </div>
 
@@ -138,151 +122,10 @@ export function Agent() {
             lineHeight: 1.65,
           }}
         >
-          LP Guardian/01 is an ERC-7857 autonomous agent on Robinhood Chain. Its memoryRoot,
-          reputation counter, and migrationsTriggered all move on chain with every
-          diagnosis. This page reads them live — no server in the trust path.
+          LP Guardian/01 coordinates portfolio diagnosis, MCP tools, and migration previews
+          for Robinhood Chain LP positions. The live agent identity panel is hidden until
+          the deployed iNFT contract is configured.
         </p>
-      </section>
-
-      {/* ── Live iNFT scoreboard ───────────────────────────────────────── */}
-      <section
-        style={{
-          position: "relative",
-          zIndex: 1,
-          padding: "0 36px 60px",
-          maxWidth: 1280,
-          margin: "0 auto",
-        }}
-      >
-        <WindowPanel title="agent.state · live · polls every 30s">
-          {/* Counter strip */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              borderBottom: "1px solid var(--lp-border-soft)",
-            }}
-          >
-            {[
-              {
-                label: "REPUTATION",
-                value: loading ? "…" : error ? "—" : String(data?.reputation ?? 0),
-                color: "var(--lp-purple)",
-              },
-              {
-                label: "MIGRATIONS TRIGGERED",
-                value: loading ? "…" : error ? "—" : String(data?.migrationsTriggered ?? 0),
-                color: "var(--lp-healthy)",
-              },
-              {
-                label: "PROTOCOL FEE",
-                value: loading ? "…" : error ? "—" : `${((data?.protocolFeeBps ?? 2000) / 100).toFixed(0)}%`,
-                color: "var(--lp-ink)",
-              },
-            ].map(({ label, value, color }, i) => (
-              <div
-                key={label}
-                style={{
-                  padding: "20px 22px 18px",
-                  borderRight: i < 2 ? "1px solid var(--lp-border-soft)" : "none",
-                }}
-              >
-                <Cap style={{ marginBottom: 8 }}>{label}</Cap>
-                <div
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontSize: "clamp(2rem, 4vw, 3.2rem)",
-                    fontWeight: 700,
-                    color,
-                    lineHeight: 1,
-                    letterSpacing: "-0.03em",
-                  }}
-                >
-                  {value}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Detail rows */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {[
-              { label: "CONTRACT",       value: data?.contract ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0", href: contractUrl, mono: true },
-              { label: "TOKEN ID",       value: data ? `#${data.tokenId}` : "#1",           href: undefined, mono: true },
-              { label: "OWNER",          value: data?.owner ?? "…",                          href: data?.owner ? `${explorerBase}/address/${data.owner}` : undefined, mono: true },
-              { label: "MEMORY ROOT",    value: data?.memoryRoot ? shortHex(data.memoryRoot) : "…", href: undefined, mono: true },
-              { label: "CODE HASH",      value: data?.codeImageHash ? shortHex(data.codeImageHash) : "…", href: undefined, mono: true },
-              { label: "MINTED AT",      value: data?.mintedAt ? ts(data.mintedAt) : "…",   href: undefined, mono: false },
-              { label: "LAST UPDATED",   value: data?.lastUpdatedAt ? ts(data.lastUpdatedAt) : "…", href: undefined, mono: false },
-              { label: "METADATA URI",   value: data?.metadataUri ? shortHex(data.metadataUri, 40, 8) : "…", href: data?.metadataUri, mono: true },
-            ].map(({ label, value, href, mono }, i) => (
-              <div
-                key={label}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  padding: "9px 22px",
-                  borderBottom: "1px solid var(--lp-border-soft)",
-                  background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
-                }}
-              >
-                <span
-                  style={{
-                    minWidth: 160,
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 9,
-                    letterSpacing: "0.10em",
-                    textTransform: "uppercase",
-                    color: "var(--lp-ink-ghost)",
-                  }}
-                >
-                  {label}
-                </span>
-                {href ? (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
-                      fontSize: 12,
-                      color: "var(--lp-cobalt)",
-                      textDecoration: "underline",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {value}
-                  </a>
-                ) : (
-                  <span
-                    style={{
-                      fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
-                      fontSize: 12,
-                      color: "var(--lp-ink-soft)",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {value}
-                  </span>
-                )}
-              </div>
-            ))}
-
-            {error && (
-              <div
-                style={{
-                  padding: "10px 22px",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--lp-bleed)",
-                }}
-              >
-                chain read error: {error}
-              </div>
-            )}
-          </div>
-        </WindowPanel>
       </section>
 
       {/* ── Agent economy + MCP tools ─────────────────────────────────── */}
@@ -306,8 +149,8 @@ export function Agent() {
             {[
               {
                 tag: "01",
-                title: "mintLicense — 0.1 OG / 24 h",
-                desc: "Pay 0.1 OG to unlock gated MCP tools for 24 hours. Owner gets 80% of the fee; 20% to protocol treasury.",
+                title: "mintLicense — 0.1 ETH / 24 h",
+                desc: "Pay 0.1 ETH to unlock gated MCP tools for 24 hours. Owner gets 80% of the fee; 20% to protocol treasury.",
                 accent: "var(--lp-yellow)",
               },
               {
@@ -486,15 +329,6 @@ export function Agent() {
         >
           Run a Diagnosis <PixelArrow />
         </Link>
-        <a
-          href={contractUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="lp-btn-ghost"
-          style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
-        >
-          View on Explorer <PixelArrow />
-        </a>
       </section>
     </div>
   );
