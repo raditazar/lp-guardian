@@ -80,7 +80,7 @@ const PHASES = [
   { phase: 6, code: "hook.score",       label: "Replay hooks" },
   { phase: 7, code: "migration.preview",label: "Build migration" },
   { phase: 8, code: "report.upload",    label: "Upload report" },
-  { phase: 9, code: "anchor.0g",        label: "Anchor root" },
+  { phase: 9, code: "anchor.robinhood",        label: "Anchor root" },
   { phase: 10, code: "verdict.synthesize", label: "TEE verdict" },
 ];
 

@@ -44,25 +44,25 @@ function shortHash(s: string): string {
 }
 
 const MODAL_THEME_VARS = {
-  "--diagnose-base": "oklch(0.97 0.018 300)",
-  "--diagnose-base-deep": "oklch(0.93 0.026 300)",
-  "--diagnose-surface": "oklch(0.985 0.012 300)",
-  "--diagnose-surface-2": "oklch(0.955 0.018 300)",
-  "--diagnose-ink": "oklch(0.15 0.042 288)",
-  "--diagnose-ink-soft": "oklch(0.28 0.04 288)",
-  "--diagnose-ink-faint": "oklch(0.50 0.035 288)",
-  "--diagnose-purple": "oklch(0.50 0.26 296)",
-  "--diagnose-magenta": "oklch(0.60 0.27 348)",
-  "--diagnose-cobalt": "oklch(0.50 0.23 258)",
-  "--diagnose-neon": "oklch(0.90 0.20 99)",
-  "--diagnose-bleed": "oklch(0.62 0.24 24)",
-  "--diagnose-healthy": "oklch(0.70 0.20 145)",
-  "--diagnose-toxic": "oklch(0.78 0.19 88)",
-  "--diagnose-border": "oklch(0.18 0.04 290)",
-  "--diagnose-border-soft": "oklch(0.18 0.04 290 / 0.14)",
-  "--diagnose-border-mid": "oklch(0.18 0.04 290 / 0.24)",
-  "--diagnose-shadow": "5px 5px 0 oklch(0.18 0.04 290)",
-  "--diagnose-shadow-sm": "3px 3px 0 oklch(0.18 0.04 290)",
+  "--diagnose-base": "var(--lp-base)",
+  "--diagnose-base-deep": "var(--lp-base-deep)",
+  "--diagnose-surface": "oklch(0.16 0.05 260)",
+  "--diagnose-surface-2": "oklch(0.20 0.055 260)",
+  "--diagnose-ink": "var(--lp-ink)",
+  "--diagnose-ink-soft": "var(--lp-ink-soft)",
+  "--diagnose-ink-faint": "var(--lp-ink-faint)",
+  "--diagnose-purple": "var(--lp-purple)",
+  "--diagnose-magenta": "var(--lp-magenta)",
+  "--diagnose-cobalt": "var(--lp-cobalt)",
+  "--diagnose-neon": "var(--lp-lime)",
+  "--diagnose-bleed": "var(--lp-bleed)",
+  "--diagnose-healthy": "var(--lp-healthy)",
+  "--diagnose-toxic": "var(--lp-toxic)",
+  "--diagnose-border": "var(--lp-ink-hard)",
+  "--diagnose-border-soft": "var(--lp-border-soft)",
+  "--diagnose-border-mid": "var(--lp-border)",
+  "--diagnose-shadow": "var(--lp-shadow)",
+  "--diagnose-shadow-sm": "var(--lp-shadow-sm)",
   "--font-display": "\"Barlow Condensed\", \"Space Grotesk\", system-ui, sans-serif",
   "--font-mono": "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, monospace",
 } as CSSProperties;
@@ -126,27 +126,39 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
         position: "fixed",
         inset: 0,
         zIndex: 100,
-        background: "oklch(0.18 0.04 290 / 0.72)",
+        background: "oklch(0.08 0.045 260 / 0.82)",
         display: "flex",
-        alignItems: "flex-start",
+        alignItems: "center",
         justifyContent: "center",
-        paddingTop: 100,
+        padding: 24,
+        backdropFilter: "blur(3px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 640,
-          maxWidth: "92vw",
-          background: "linear-gradient(180deg, oklch(0.995 0.006 300 / 0.98), oklch(0.972 0.014 300))",
-          border: "2px solid var(--diagnose-border)",
+          width: 760,
+          maxWidth: "min(94vw, 760px)",
+          maxHeight: "min(88vh, 760px)",
+          display: "flex",
+          flexDirection: "column",
+          background: "linear-gradient(180deg, var(--diagnose-base), var(--diagnose-base-deep))",
+          border: "3px solid var(--diagnose-border)",
           borderRadius: 3,
-          boxShadow: "8px 8px 0 var(--diagnose-border)",
+          boxShadow: "8px 8px 0 var(--diagnose-border), 0 24px 80px oklch(0 0 0 / 0.45)",
           overflow: "hidden",
         }}
       >
         {/* Title bar */}
-        <div className="diagnose-window-bar" style={{ minHeight: 32, padding: "8px 12px" }}>
+        <div
+          className="diagnose-window-bar"
+          style={{
+            minHeight: 34,
+            padding: "8px 12px",
+            background: "var(--diagnose-base-deep)",
+            borderBottom: "3px solid var(--diagnose-border)",
+          }}
+        >
           <span className="diagnose-window-dot diagnose-window-dot-red" />
           <span className="diagnose-window-dot diagnose-window-dot-yellow" />
           <span className="diagnose-window-dot diagnose-window-dot-green" />
@@ -162,11 +174,12 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              color: "var(--diagnose-ink-faint)",
+              color: "var(--diagnose-ink-soft)",
               letterSpacing: "0.06em",
-              padding: "2px 6px",
+              minHeight: 34,
+              padding: "4px 10px",
               background: "transparent",
-              border: "1px solid var(--diagnose-border-mid)",
+              border: "2px solid var(--diagnose-border-mid)",
               borderRadius: 2,
               cursor: "pointer",
             }}
@@ -178,18 +191,18 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
         {/* Header */}
         <div
           style={{
-            padding: "14px 18px 12px",
-            borderBottom: "1px solid var(--diagnose-border-soft)",
+            padding: "20px 24px 18px",
+            borderBottom: "2px solid var(--diagnose-border-mid)",
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: 10,
+              fontSize: 11,
               textTransform: "uppercase",
               letterSpacing: "0.12em",
               color: "var(--diagnose-cobalt)",
-              marginBottom: 6,
+              marginBottom: 8,
             }}
           >
             MIGRATE · PERMIT2 BUNDLE
@@ -198,11 +211,12 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
             style={{
               margin: 0,
               fontFamily: "var(--font-display)",
-              fontSize: 18,
+              fontSize: "clamp(1.8rem, 4vw, 2.8rem)",
               fontWeight: 700,
               color: "var(--diagnose-ink)",
               textTransform: "uppercase",
               letterSpacing: "-0.01em",
+              lineHeight: 0.95,
             }}
           >
             {preview.targetHook
@@ -212,7 +226,15 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div
+          style={{
+            padding: 24,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            overflowY: "auto",
+          }}
+        >
 
           {/* Steps */}
           <ol
@@ -230,25 +252,25 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
                 key={i}
                 style={{
                   display: "flex",
-                  gap: 10,
-                  padding: "9px 12px",
-                  border: "1.5px solid var(--diagnose-border-mid)",
+                  gap: 12,
+                  padding: "14px 16px",
+                  border: "2px solid var(--diagnose-border-mid)",
                   borderRadius: 3,
-                  background: "oklch(0.985 0.012 300 / 0.6)",
+                  background: "var(--diagnose-surface)",
                   fontFamily: "var(--font-mono)",
-                  fontSize: 12,
+                  fontSize: 13,
                 }}
               >
                 <span
                   style={{
-                    width: 18,
-                    height: 18,
-                    lineHeight: "18px",
+                    width: 28,
+                    height: 28,
+                    lineHeight: "28px",
                     textAlign: "center",
                     borderRadius: 2,
-                    background: `color-mix(in oklch, ${KIND_COLOR[step.kind]} 14%, oklch(0.985 0.012 300))`,
+                    background: `color-mix(in oklch, ${KIND_COLOR[step.kind]} 18%, var(--diagnose-surface-2))`,
                     color: KIND_COLOR[step.kind],
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: 800,
                     flexShrink: 0,
                   }}
@@ -256,13 +278,13 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
                   {KIND_SYMBOL[step.kind]}
                 </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ color: "var(--diagnose-ink)" }}>{step.description}</div>
+                  <div style={{ color: "var(--diagnose-ink)", lineHeight: 1.45 }}>{step.description}</div>
                   {step.detail && (
                     <div
                       style={{
                         marginTop: 4,
                         color: "var(--diagnose-ink-faint)",
-                        fontSize: 10,
+                        fontSize: 11,
                         display: "flex",
                         flexWrap: "wrap",
                         gap: "2px 12px",
@@ -286,11 +308,11 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
             <ul
               style={{
                 margin: 0,
-                padding: "8px 12px 8px 28px",
-                border: "1.5px solid oklch(0.78 0.19 88 / 0.40)",
+                padding: "10px 14px 10px 32px",
+                border: "2px solid color-mix(in oklch, var(--diagnose-toxic) 60%, var(--diagnose-border))",
                 borderRadius: 3,
-                background: "oklch(0.78 0.19 88 / 0.06)",
-                fontSize: 10,
+                background: "color-mix(in oklch, var(--diagnose-toxic) 8%, var(--diagnose-surface))",
+                fontSize: 11,
                 color: "var(--diagnose-toxic)",
                 lineHeight: 1.7,
                 fontFamily: "var(--font-mono)",
@@ -305,12 +327,12 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
           {/* Permit2 data panel */}
           <div
             style={{
-              padding: "10px 14px",
-              border: "1.5px solid var(--diagnose-border-mid)",
+              padding: "14px 16px",
+              border: "2px solid var(--diagnose-border-mid)",
               borderRadius: 3,
-              background: "oklch(0.975 0.014 300 / 0.7)",
+              background: "var(--diagnose-surface)",
               fontFamily: "var(--font-mono)",
-              fontSize: 11,
+              fontSize: 12,
               color: "var(--diagnose-ink-soft)",
               lineHeight: 1.8,
             }}
@@ -319,7 +341,7 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
               style={{
                 marginBottom: 6,
                 fontWeight: 700,
-                fontSize: 9,
+                fontSize: 10,
                 textTransform: "uppercase",
                 letterSpacing: "0.10em",
                 color: "var(--diagnose-cobalt)",
@@ -338,9 +360,9 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
             <div
               style={{
                 padding: "10px 14px",
-                border: "1.5px solid var(--diagnose-healthy)",
+                border: "2px solid var(--diagnose-healthy)",
                 borderRadius: 3,
-                background: "color-mix(in oklch, var(--diagnose-healthy) 6%, oklch(0.985 0.012 300))",
+                background: "color-mix(in oklch, var(--diagnose-healthy) 8%, var(--diagnose-surface))",
                 fontFamily: "var(--font-mono)",
                 fontSize: 11,
                 color: "var(--diagnose-healthy)",
@@ -398,9 +420,9 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
                 fontSize: 11,
                 color: "var(--diagnose-bleed)",
                 padding: "8px 12px",
-                border: "1.5px solid oklch(0.62 0.24 24 / 0.35)",
+                border: "2px solid color-mix(in oklch, var(--diagnose-bleed) 60%, var(--diagnose-border))",
                 borderRadius: 3,
-                background: "oklch(0.62 0.24 24 / 0.06)",
+                background: "color-mix(in oklch, var(--diagnose-bleed) 8%, var(--diagnose-surface))",
               }}
             >
               {error}
@@ -411,8 +433,8 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
         {/* Footer */}
         <div
           style={{
-            padding: "12px 18px",
-            borderTop: "1px solid var(--diagnose-border-soft)",
+            padding: "16px 24px",
+            borderTop: "3px solid var(--diagnose-border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -425,8 +447,8 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--diagnose-ink-faint)",
+                  fontSize: 12,
+                  color: "var(--diagnose-ink-soft)",
                 }}
               >
                 Connect wallet to sign the Permit2 bundle.
@@ -438,8 +460,8 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--diagnose-ink-faint)",
+                  fontSize: 12,
+                  color: "var(--diagnose-ink-soft)",
                   flex: 1,
                   lineHeight: 1.5,
                 }}
@@ -454,6 +476,7 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
                 onClick={handleSign}
                 disabled={isPending || !!result}
                 style={{
+                  minHeight: 44,
                   padding: "10px 20px",
                   fontFamily: "var(--font-mono)",
                   fontSize: 12,
@@ -461,8 +484,8 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
                   textTransform: "uppercase",
                   letterSpacing: "0.06em",
                   background: "var(--diagnose-neon)",
-                  color: "var(--diagnose-ink)",
-                  border: "2px solid var(--diagnose-border)",
+                  color: "var(--lp-ink-hard)",
+                  border: "3px solid var(--diagnose-border)",
                   borderRadius: 2,
                   boxShadow: "var(--diagnose-shadow-sm)",
                   cursor: isPending || !!result ? "not-allowed" : "pointer",

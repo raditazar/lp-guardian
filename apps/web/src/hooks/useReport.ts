@@ -23,7 +23,7 @@ export interface AssembledReportPayload {
     owner: string;
   };
   attestation?: {
-    type: "0g-compute-broker-signature";
+    type: "tee-attestor-signature";
     provider: string;
     model: string;
     requestSignatureHash?: string;

@@ -249,7 +249,7 @@ export function Landing() {
                 </h3>
                 <p style={{ margin: 0, color: "var(--lp-ink-soft)", fontSize: 14, lineHeight: 1.55, textWrap: "pretty" }}>
                   MCP server, 5 tools. Two free verifiers, three gated by mintLicense
-                  (0.1&nbsp;OG&nbsp;/&nbsp;24&nbsp;h, 80/20 royalty split). cast-send snippets included.
+                  (0.1&nbsp;ETH&nbsp;/&nbsp;24&nbsp;h, 80/20 royalty split). cast-send snippets included.
                 </p>
                 <div style={{ marginTop: 14 }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-cobalt)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -437,7 +437,7 @@ export function Landing() {
                 }}
               >
                 {[
-                  { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 OG for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
+                  { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 ETH for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
                   { tag: "02", title: "memoryRoot evolves per run", desc: "Each diagnose updates agents(1).memoryRoot to the new Storage blob." },
                   { tag: "03", title: "reputation + migrationsTriggered", desc: "Two on-chain counters move per run. recordMigration bumps when user signs." },
                   { tag: "04", title: "5 MCP product tools", desc: "portfolio_diagnose / simulate / optimize / execute / monitor exposed through MCP." },
@@ -465,7 +465,7 @@ export function Landing() {
               variant="yellow"
               style={{ position: "absolute", top: -12, right: -8, transform: "rotate(3deg)", zIndex: 3 }}
             >
-              0.1 OG / 24 H
+              0.1 ETH / 24 H
             </StickerBadge>
             <StickerBadge
               variant="magenta"

@@ -2,30 +2,55 @@
 /* Scope: .report-theme. Product-register proof artifact. */
 
 .report-theme {
-  --report-base: oklch(0.975 0.014 300);
-  --report-base-deep: oklch(0.94 0.018 300);
-  --report-surface: oklch(0.99 0.006 300);
-  --report-surface-2: oklch(0.955 0.014 300);
-  --report-ink: oklch(0.15 0.036 288);
-  --report-ink-soft: oklch(0.30 0.032 288);
-  --report-ink-faint: oklch(0.50 0.026 288);
-  --report-purple: oklch(0.50 0.24 296);
-  --report-cobalt: oklch(0.46 0.20 255);
-  --report-green: oklch(0.48 0.17 148);
-  --report-yellow: oklch(0.70 0.16 88);
-  --report-red: oklch(0.58 0.22 28);
-  --report-border: oklch(0.18 0.04 290);
-  --report-border-soft: oklch(0.18 0.04 290 / 0.13);
-  --report-border-mid: oklch(0.18 0.04 290 / 0.24);
-  --report-shadow: 4px 4px 0 oklch(0.18 0.04 290);
-  --report-shadow-sm: 2px 2px 0 oklch(0.18 0.04 290);
+  --lp-base-deep:    oklch(0.21 0.11 267);
+  --lp-base-royal:   oklch(0.38 0.18 260);
+  --lp-base-card:    oklch(0.28 0.10 263);
+  --lp-paper:        oklch(0.97 0.01 250);
+
+  --lp-ink-hard:     oklch(0.12 0.02 260);
+  --lp-ink:          oklch(0.97 0.01 250);
+  --lp-ink-soft:     oklch(0.82 0.05 255);
+  --lp-ink-faint:    oklch(0.64 0.07 258);
+  --lp-ink-ghost:    oklch(0.46 0.07 260);
+
+  --lp-lime:         oklch(0.92 0.22 130);
+  --lp-lime-deep:    oklch(0.78 0.21 130);
+  --lp-purple:       oklch(0.72 0.19 296);
+  --lp-cobalt:       oklch(0.70 0.17 228);
+  --lp-bleed:        oklch(0.72 0.22 24);
+  --lp-healthy:      oklch(0.80 0.18 145);
+  --lp-toxic:        oklch(0.86 0.18 88);
+
+  --lp-border:       oklch(0.12 0.02 260);
+  --lp-border-soft:  oklch(0.65 0.07 258 / 0.14);
+  --lp-border-mid:   oklch(0.65 0.07 258 / 0.28);
+  --lp-shadow:       5px 5px 0 oklch(0.12 0.02 260);
+  --lp-shadow-sm:    3px 3px 0 oklch(0.12 0.02 260);
+
+  --report-base: var(--lp-base-deep);
+  --report-base-deep: var(--lp-base-royal);
+  --report-surface: oklch(0.16 0.05 260);
+  --report-surface-2: oklch(0.20 0.055 260);
+  --report-ink: var(--lp-ink);
+  --report-ink-soft: var(--lp-ink-soft);
+  --report-ink-faint: var(--lp-ink-faint);
+  --report-purple: var(--lp-purple);
+  --report-cobalt: var(--lp-cobalt);
+  --report-green: var(--lp-healthy);
+  --report-yellow: var(--lp-toxic);
+  --report-red: var(--lp-bleed);
+  --report-border: var(--lp-ink-hard);
+  --report-border-soft: var(--lp-border-soft);
+  --report-border-mid: var(--lp-border);
+  --report-shadow: var(--lp-shadow);
+  --report-shadow-sm: var(--lp-shadow-sm);
 
   --text: var(--report-ink);
   --text-secondary: var(--report-ink-soft);
   --text-tertiary: var(--report-ink-faint);
-  --text-faint: oklch(0.66 0.018 290);
-  --surface: var(--report-surface-2);
-  --surface-raised: var(--report-surface);
+  --text-faint: var(--lp-ink-ghost);
+  --surface: var(--lp-base-card);
+  --surface-raised: oklch(0.34 0.11 260);
   --border: var(--report-border-soft);
   --border-strong: var(--report-border-mid);
   --cyan: var(--report-cobalt);
@@ -37,7 +62,10 @@
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: var(--report-base);
+  --font-display: 'Bagel Fat One', system-ui, sans-serif;
+
+  background: linear-gradient(to bottom, var(--lp-base-deep) 0%, var(--lp-base-royal) 100%);
+  background-attachment: fixed;
   color: var(--report-ink);
 }
 
@@ -54,11 +82,11 @@
   background-image:
     linear-gradient(var(--report-border-soft) 1px, transparent 1px),
     linear-gradient(90deg, var(--report-border-soft) 1px, transparent 1px),
-    radial-gradient(circle at 16% 10%, oklch(0.50 0.24 296 / 0.09), transparent 30%),
-    radial-gradient(circle at 88% 8%, oklch(0.46 0.20 255 / 0.06), transparent 28%);
+    radial-gradient(circle at 16% 10%, color-mix(in oklch, var(--report-purple) 18%, transparent), transparent 30%),
+    radial-gradient(circle at 88% 8%, color-mix(in oklch, var(--report-cobalt) 16%, transparent), transparent 28%);
   background-size: 48px 48px, 48px 48px, 100% 100%, 100% 100%;
   mask-image: linear-gradient(to bottom, black 0%, black 64%, transparent 100%);
-  opacity: 0.72;
+  opacity: 0.62;
   z-index: 0;
 }
 
@@ -70,14 +98,14 @@
 
 .report-theme .chip-cyan {
   color: var(--report-purple);
-  border-color: oklch(0.50 0.24 296 / 0.24);
-  background: oklch(0.50 0.24 296 / 0.08);
+  border-color: color-mix(in oklch, var(--report-purple) 50%, var(--report-border));
+  background: color-mix(in oklch, var(--report-purple) 12%, transparent);
 }
 
 .report-theme .btn-primary {
-  background: oklch(0.90 0.20 99);
-  color: var(--report-ink);
-  border: 2px solid var(--report-border);
+  background: var(--lp-lime);
+  color: var(--lp-ink-hard);
+  border: 3px solid var(--report-border);
   border-radius: 2px;
   box-shadow: var(--report-shadow);
   text-transform: uppercase;
@@ -86,9 +114,9 @@
 }
 
 .report-shell {
-  width: min(1280px, calc(100% - 72px));
+  width: min(1360px, calc(100% - 64px));
   margin: 0 auto;
-  padding: 44px 0 112px;
+  padding: 48px 0 120px;
 }
 
 .report-masthead {
@@ -96,7 +124,9 @@
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.58fr);
   gap: 28px;
   align-items: end;
-  margin-bottom: 30px;
+  padding: 48px 0 56px;
+  margin-bottom: 36px;
+  border-bottom: 2px solid var(--lp-border-mid);
 }
 
 .report-kicker {
@@ -104,7 +134,15 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
-  color: var(--report-purple);
+  padding: 6px 16px;
+  background: var(--lp-lime);
+  color: var(--lp-ink-hard);
+  border: 2px solid var(--lp-ink-hard);
+  border-radius: 9999px;
+  box-shadow: 3px 3px 0 var(--lp-ink-hard);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -112,20 +150,21 @@
 }
 
 .report-pixel-dot {
+  display: none;
   width: 8px;
   height: 8px;
   border-radius: 1px;
-  background: var(--report-purple);
-  box-shadow: 0 0 0 3px oklch(0.50 0.24 296 / 0.13);
+  background: var(--lp-lime);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--lp-lime) 20%, transparent);
 }
 
 .report-masthead h1 {
   margin: 0;
-  color: var(--report-ink);
+  color: var(--lp-lime);
   font-family: var(--font-display);
-  font-size: 5.25rem;
-  line-height: 0.92;
-  letter-spacing: 0;
+  font-size: clamp(3rem, 5.5vw, 5rem);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -143,8 +182,8 @@
 .report-rail-window,
 .report-loading-window,
 .report-error-window {
-  background: var(--report-surface);
-  border: 2px solid var(--report-border);
+  background: oklch(0.24 0.10 265);
+  border: 3px solid var(--report-border);
   border-radius: 3px;
   box-shadow: var(--report-shadow);
   overflow: hidden;
@@ -154,6 +193,7 @@
   display: grid;
   gap: 8px;
   padding: 18px;
+  align-self: center;
 }
 
 .report-hash-plate span,
@@ -166,7 +206,7 @@
 }
 
 .report-hash-plate strong {
-  color: var(--report-purple);
+  color: var(--lp-lime);
   font-family: var(--font-mono);
   font-size: 15px;
   line-height: 1.45;
@@ -200,8 +240,8 @@
   gap: 6px;
   min-height: 28px;
   padding: 7px 10px;
-  background: var(--report-base-deep);
-  border-bottom: 1px solid var(--report-border-mid);
+  background: oklch(0.24 0.10 265);
+  border-bottom: 3px solid var(--report-border);
   user-select: none;
 }
 
@@ -229,7 +269,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--report-ink-faint);
+  color: var(--report-ink-ghost, var(--report-ink-faint));
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
@@ -241,7 +281,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--report-border-soft);
+  border-bottom: 2px solid var(--report-border-mid);
 }
 
 .report-section-heading h2 {
@@ -257,7 +297,7 @@
 .report-section-body {
   display: grid;
   gap: 0;
-  padding: 10px 18px 18px;
+  padding: 12px 20px 20px;
 }
 
 .report-row {
@@ -296,7 +336,7 @@
 }
 
 .report-row-warning .report-row-value {
-  color: oklch(0.56 0.15 72);
+  color: var(--report-yellow);
 }
 
 .report-row-danger .report-row-value {
@@ -321,7 +361,7 @@
 
 .report-root-receipt strong {
   min-width: 0;
-  color: var(--report-purple);
+  color: var(--lp-lime);
   font-family: var(--font-mono);
   font-size: 16px;
   line-height: 1.45;
@@ -345,9 +385,9 @@
   justify-content: center;
   gap: 6px;
   padding: 5px 9px;
-  border: 1px solid var(--report-cobalt);
+  border: 2px solid var(--report-cobalt);
   border-radius: 2px;
-  background: oklch(0.46 0.20 255 / 0.07);
+  background: color-mix(in oklch, var(--report-cobalt) 10%, transparent);
   color: var(--report-cobalt);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -367,7 +407,7 @@
 .report-link:hover,
 .report-internal-link:hover,
 .report-copy-button:hover {
-  background: oklch(0.46 0.20 255 / 0.12);
+  background: color-mix(in oklch, var(--report-cobalt) 18%, transparent);
   box-shadow: var(--report-shadow-sm);
   transform: translate(-1px, -1px);
 }
@@ -382,7 +422,7 @@
 .report-warning-list {
   margin: 0;
   padding-left: 16px;
-  color: oklch(0.56 0.15 72);
+  color: var(--report-yellow);
 }
 
 .report-verdict-markdown {
@@ -390,11 +430,11 @@
   border-top: 1px solid var(--report-border-soft);
   font-size: 12px;
   line-height: 1.65;
-  color: oklch(0.88 0.02 260);
+  color: var(--report-ink-soft);
 }
 .report-verdict-markdown p { margin: 0 0 6px; }
 .report-verdict-markdown ul { margin: 0 0 6px; padding-left: 16px; }
-.report-verdict-markdown strong { color: oklch(0.97 0.02 250); }
+.report-verdict-markdown strong { color: var(--report-ink); }
 
 .report-rail-body {
   display: grid;
@@ -406,8 +446,8 @@
   display: grid;
   gap: 4px;
   padding: 14px;
-  border: 1px solid var(--report-border-mid);
-  background: var(--report-base);
+  border: 2px solid var(--report-border-mid);
+  background: var(--report-surface);
 }
 
 .report-seal span {
@@ -426,13 +466,13 @@
 }
 
 .report-seal-verified {
-  border-color: oklch(0.48 0.17 148 / 0.45);
-  background: oklch(0.48 0.17 148 / 0.08);
+  border-color: color-mix(in oklch, var(--report-green) 60%, var(--report-border));
+  background: color-mix(in oklch, var(--report-green) 9%, var(--report-surface));
 }
 
 .report-seal-partial {
-  border-color: oklch(0.70 0.16 88 / 0.45);
-  background: oklch(0.70 0.16 88 / 0.10);
+  border-color: color-mix(in oklch, var(--report-yellow) 60%, var(--report-border));
+  background: color-mix(in oklch, var(--report-yellow) 9%, var(--report-surface));
 }
 
 .report-summary-list .report-row {
@@ -520,7 +560,7 @@
 
 .report-theme .text-amber-300,
 .report-theme .text-orange-300 {
-  color: oklch(0.56 0.15 72) !important;
+  color: var(--report-yellow) !important;
 }
 
 .report-theme .border-emerald-500\/40,

@@ -591,7 +591,7 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
       owner: i.owner,
     },
     attestation: {
-      type: "0g-compute-broker-signature",
+      type: "tee-attestor-signature",
       provider: i.verdict.provider,
       model: i.verdict.model,
       // keccak256 of the TDX quote when TEE-attested — lets clients match the

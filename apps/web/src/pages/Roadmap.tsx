@@ -67,7 +67,7 @@ function PixelArrow() {
 const PHASES = [
   {
     phase: "NOW",
-    version: "v0.1 · Aristotle Mainnet",
+    version: "v0.1 · Robinhood Chain",
     label: "SHIPPED",
     labelVariant: "healthy" as const,
     accent: "var(--lp-healthy)",
@@ -99,13 +99,13 @@ const PHASES = [
     accent: "var(--lp-cobalt)",
     sticker: "cobalt" as StickerVariant,
     stickerText: "Q3 2026",
-    description: "The base mainnet stack is already live. The next phase adds real execution, richer coverage, and broader monetization on top of the Aristotle deployment.",
+    description: "The base mainnet stack is already live. The next phase adds real execution, richer coverage, and broader monetization on top of the Robinhood Chain deployment.",
     items: [
       { done: false, text: "Real Permit2 migration execution (not preview-only)" },
       { done: false, text: "Expanded V4 hook registry: 10+ hook families" },
       { done: false, text: "Batch diagnosis: scan full wallet in one run" },
       { done: false, text: "Range re-entry signals: alert when out-of-range positions can be rebalanced profitably" },
-      { done: false, text: "mintLicense revenue live: 0.1 OG / 24h with 80/20 split" },
+      { done: false, text: "mintLicense revenue live: 0.1 ETH / 24h with 80/20 split" },
       { done: false, text: "Expanded mainnet agent monetization + license flows" },
       { done: false, text: "Diagnose history: per-wallet report timeline" },
       { done: false, text: "IPFS pinning for all anchored reports" },
@@ -198,7 +198,7 @@ export function Roadmap() {
           }}
         >
           LP Guardian is hackathon-native, but not hackathon-shaped. Phase 1 ships the
-          full diagnostic pipeline on Aristotle Mainnet. Phase 2 focuses on execution
+          full diagnostic pipeline on Robinhood Chain. Phase 2 focuses on execution
           and richer automation on top of that base.
           Phase 3 turns LP Guardian into infrastructure for the agent economy.
         </p>
