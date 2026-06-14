@@ -130,7 +130,7 @@ async function generateGeminiSummary(input: {
   const apiKey = readString(process.env.GEMINI_API_KEY);
   if (!apiKey) return null;
 
-  const modelName = readString(process.env.GEMINI_MODEL) ?? "gemini-3.5-flash";
+  const modelName = readString(process.env.GEMINI_MODEL) ?? "gemini-1.5-flash";
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
     {
