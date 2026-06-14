@@ -630,6 +630,39 @@
   transition:     box-shadow 80ms linear, transform 80ms linear, background 100ms;
 }
 
+.diagnose-theme .wallet-menu-address-row {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  margin-top:  12px;
+}
+
+.diagnose-theme .wallet-menu-address-row .wallet-menu-address {
+  flex:       1;
+  min-width:  0;
+  margin-top: 0;
+  overflow:   hidden;
+}
+
+.diagnose-theme .wallet-menu-action.wallet-menu-action-copy {
+  width:           40px;
+  min-width:       40px;
+  min-height:      40px;
+  flex:            0 0 40px;
+  padding:         0;
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  background:      var(--lp-paper);
+  color:           var(--lp-ink-hard);
+  box-shadow:      2px 2px 0 var(--lp-ink-hard);
+  font-family:     var(--font-mono);
+  font-size:       16px;
+  font-weight:     800;
+  line-height:     1;
+  letter-spacing:  0;
+}
+
 .diagnose-theme .wallet-menu-action:hover  { background: var(--lp-lime); }
 .diagnose-theme .wallet-menu-action:active { transform: translate(3px, 3px); box-shadow: none; }
 .diagnose-theme .wallet-menu-action-danger { background: oklch(0.72 0.20 15); }

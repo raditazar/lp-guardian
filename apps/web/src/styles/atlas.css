@@ -300,6 +300,25 @@
   transition:     box-shadow 80ms linear, transform 80ms linear, background 100ms;
 }
 
+.atlas-theme .wallet-menu-action.wallet-menu-action-copy {
+  width:           40px;
+  min-width:       40px;
+  min-height:      40px;
+  flex:            0 0 40px;
+  padding:         0;
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  background:      var(--lp-paper);
+  color:           var(--lp-ink-hard);
+  box-shadow:      2px 2px 0 var(--lp-ink-hard);
+  font-family:     var(--font-mono);
+  font-size:       16px;
+  font-weight:     800;
+  line-height:     1;
+  letter-spacing:  0;
+}
+
 .atlas-theme .wallet-menu-action:hover {
   background: var(--lp-lime);
 }

@@ -13,7 +13,7 @@ export interface AssembledReportPayload {
     owner: string;
   };
   attestation?: {
-    type: "0g-compute-broker-signature";
+    type: "tee-attestor-signature";
     provider: string;
     model: string;
     requestSignatureHash?: string;
@@ -65,6 +65,13 @@ export interface AssembledReportPayload {
       modelBacked?: boolean;
       actionName?: string;
     };
+  };
+  verdict?: {
+    recommendation: string;
+    markdown: string;
+    label: "VERIFIED" | "EMULATED";
+    provider: string;
+    model: string;
   };
 }
 

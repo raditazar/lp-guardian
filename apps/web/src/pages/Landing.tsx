@@ -6,24 +6,26 @@ import "../styles/landing.css";
 
 /* ── Live-stream phases shown in the hero window ──────────────────── */
 const HERO_STREAM: { n: string; name: string; label: string }[] = [
-  { n: "01", name: "position.resolve", label: "VERIFIED" },
-  { n: "03", name: "il.reconstruct", label: "COMPUTED" },
-  { n: "04", name: "regime.classify", label: "ESTIMATED" },
-  { n: "05", name: "hooks.discover", label: "LABELED" },
-  { n: "06", name: "hook.replay (1k swaps)", label: "COMPUTED" },
+  { n: "01", name: "position.resolve",          label: "VERIFIED" },
+  { n: "02", name: "swap.replay",               label: "COMPUTED" },
+  { n: "03", name: "il.reconstruct",            label: "COMPUTED" },
+  { n: "04", name: "regime.classify",           label: "ESTIMATED" },
+  { n: "05", name: "hooks.discover",            label: "LABELED" },
+  { n: "06", name: "hook.replay (1k swaps)",    label: "COMPUTED" },
 ];
 
-/* ── All 9 phases shown in the HOW section ────────────────────────── */
+/* ── All 10 phases shown in the HOW section ───────────────────────── */
 const ALL_PHASES: { n: string; name: string; label: string }[] = [
-  { n: "01", name: "position.resolve", label: "VERIFIED" },
-  { n: "03", name: "il.reconstruct", label: "COMPUTED" },
-  { n: "04", name: "regime.classify", label: "ESTIMATED" },
-  { n: "05", name: "hooks.discover", label: "LABELED" },
-  { n: "06", name: "hook.replay (1k swaps)", label: "COMPUTED" },
-  { n: "07", name: "migration.preview", label: "COMPUTED" },
-  { n: "10", name: "verdict.synthesize (TEE)", label: "ESTIMATED" },
-  { n: "08", name: "report.upload (Storage)", label: "VERIFIED" },
-  { n: "09", name: "anchor.robinhood-chain + iNFT update", label: "VERIFIED" },
+  { n: "01", name: "position.resolve",                   label: "VERIFIED" },
+  { n: "02", name: "swap.replay",                        label: "COMPUTED" },
+  { n: "03", name: "il.reconstruct",                     label: "COMPUTED" },
+  { n: "04", name: "regime.classify",                    label: "ESTIMATED" },
+  { n: "05", name: "hooks.discover",                     label: "LABELED" },
+  { n: "06", name: "hook.replay (1k swaps)",             label: "COMPUTED" },
+  { n: "07", name: "migration.preview",                  label: "COMPUTED" },
+  { n: "08", name: "report.upload (IPFS)",               label: "VERIFIED" },
+  { n: "09", name: "anchor.robinhood-chain",             label: "VERIFIED" },
+  { n: "10", name: "verdict.synthesize (TEE)",           label: "VERIFIED" },
 ];
 
 export function Landing() {
@@ -247,7 +249,7 @@ export function Landing() {
                 </h3>
                 <p style={{ margin: 0, color: "var(--lp-ink-soft)", fontSize: 14, lineHeight: 1.55, textWrap: "pretty" }}>
                   MCP server, 5 tools. Two free verifiers, three gated by mintLicense
-                  (0.1&nbsp;OG&nbsp;/&nbsp;24&nbsp;h, 80/20 royalty split). cast-send snippets included.
+                  (0.1&nbsp;ETH&nbsp;/&nbsp;24&nbsp;h, 80/20 royalty split). cast-send snippets included.
                 </p>
                 <div style={{ marginTop: 14 }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--lp-cobalt)", display: "flex", alignItems: "center", gap: 6 }}>
@@ -435,7 +437,7 @@ export function Landing() {
                 }}
               >
                 {[
-                  { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 OG for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
+                  { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 ETH for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
                   { tag: "02", title: "memoryRoot evolves per run", desc: "Each diagnose updates agents(1).memoryRoot to the new Storage blob." },
                   { tag: "03", title: "reputation + migrationsTriggered", desc: "Two on-chain counters move per run. recordMigration bumps when user signs." },
                   { tag: "04", title: "5 MCP product tools", desc: "portfolio_diagnose / simulate / optimize / execute / monitor exposed through MCP." },
@@ -463,7 +465,7 @@ export function Landing() {
               variant="yellow"
               style={{ position: "absolute", top: -12, right: -8, transform: "rotate(3deg)", zIndex: 3 }}
             >
-              0.1 OG / 24 H
+              0.1 ETH / 24 H
             </StickerBadge>
             <StickerBadge
               variant="magenta"

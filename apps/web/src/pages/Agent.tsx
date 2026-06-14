@@ -2,6 +2,7 @@ import { type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader.js";
 import { Cap } from "../design/atoms.js";
+import { useAgentLiveState, AGENT_CONTRACT_CONFIGURED } from "../hooks/useAgentLiveState.js";
 import "../styles/landing.css";
 
 /* ─── Shared inline primitives ──────────────────────────────────────── */
@@ -72,6 +73,88 @@ const CURRENT_MCP_TOOLS = [
   { name: "portfolio_monitor", gated: false, desc: "Fetch a point-in-time wallet portfolio snapshot for monitor and alert agents." },
 ];
 
+function shortHex(h: string, len = 8): string {
+  if (h.length <= len + 2 + 6) return h;
+  return `${h.slice(0, len)}…${h.slice(-6)}`;
+}
+
+function AgentLivePanel() {
+  const { data, loading, error } = useAgentLiveState();
+
+  if (!AGENT_CONTRACT_CONFIGURED) {
+    return (
+      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--lp-ink-soft)", lineHeight: 1.6 }}>
+            The ERC-7857 iNFT agent contract is being deployed on Robinhood Chain.
+            Once <code style={{ fontFamily: "var(--font-mono)", fontSize: 11 }}>VITE_LPGUARDIAN_AGENT_CONTRACT</code> is
+            set, this panel polls live on-chain state every 30 s.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+            {[
+              { label: "PortfolioReportRegistry", addr: "0x9803be5349eedf7c28ac1914b743757ce043b7cc" },
+              { label: "PortfolioRiskEngine",      addr: "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0" },
+              { label: "SwapReplayVerifier",       addr: "0x75191d7ca10ea9c36b88b169896d4f258702afa2" },
+            ].map(({ label, addr }) => (
+              <div key={addr} style={{ fontFamily: "var(--font-mono)", fontSize: 11, display: "flex", gap: 10, alignItems: "baseline" }}>
+                <span style={{ color: "var(--lp-ink-ghost)", width: 200, flexShrink: 0 }}>{label}</span>
+                <span style={{ color: "var(--lp-cobalt)" }}>{addr}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </WindowPanel>
+    );
+  }
+
+  if (loading) {
+    return (
+      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+        <div style={{ padding: "16px", color: "var(--lp-ink-soft)", fontSize: 13 }}>
+          Loading on-chain agent state…
+        </div>
+      </WindowPanel>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+        <div style={{ padding: "16px", color: "var(--lp-bleed)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
+          {error ?? "No data returned"}
+        </div>
+      </WindowPanel>
+    );
+  }
+
+  const rows: { k: string; v: string; accent?: string }[] = [
+    { k: "contract",            v: data.contract },
+    { k: "tokenId",             v: `#${data.tokenId}` },
+    { k: "owner",               v: data.owner },
+    { k: "memoryRoot",          v: shortHex(data.memoryRoot), accent: "var(--lp-purple)" },
+    { k: "reputation",          v: data.reputation.toString(), accent: "var(--lp-healthy)" },
+    { k: "migrationsTriggered", v: data.migrationsTriggered.toString() },
+    { k: "protocolFeeBps",      v: `${(data.protocolFeeBps / 100).toFixed(2)}%` },
+    { k: "lastUpdatedAt",       v: data.lastUpdatedAt ? new Date(data.lastUpdatedAt * 1000).toISOString() : "—" },
+  ];
+
+  return (
+    <WindowPanel title="agent.live · ROBINHOOD CHAIN">
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, display: "flex", flexDirection: "column", gap: 0 }}>
+        {rows.map(({ k, v, accent }) => (
+          <div key={k} style={{ display: "flex", gap: 12, padding: "7px 14px", borderBottom: "1px solid var(--lp-border-soft)" }}>
+            <span style={{ color: "var(--lp-ink-ghost)", width: 180, flexShrink: 0 }}>{k}</span>
+            <span style={{ color: accent ?? "var(--lp-ink)", wordBreak: "break-all" }}>{v}</span>
+          </div>
+        ))}
+        <div style={{ padding: "6px 14px", fontSize: 10, color: "var(--lp-ink-faint)" }}>
+          polled at {new Date(data.fetchedAt).toISOString()}
+        </div>
+      </div>
+    </WindowPanel>
+  );
+}
+
 export function Agent() {
   return (
     <div className="landing-theme" style={{ minHeight: "100vh" }}>
@@ -123,9 +206,23 @@ export function Agent() {
           }}
         >
           LP Guardian/01 coordinates portfolio diagnosis, MCP tools, and migration previews
-          for Robinhood Chain LP positions. The live agent identity panel is hidden until
-          the deployed iNFT contract is configured.
+          for Robinhood Chain LP positions. The iNFT agent identity lives on Robinhood Chain —
+          ERC-7857 contract deployment is in progress and the live panel will activate once
+          the contract address is wired in.
         </p>
+      </section>
+
+      {/* ── Live on-chain agent state ─────────────────────────────────── */}
+      <section
+        style={{
+          position: "relative",
+          zIndex: 1,
+          padding: "0 36px 28px",
+          maxWidth: 1280,
+          margin: "0 auto",
+        }}
+      >
+        <AgentLivePanel />
       </section>
 
       {/* ── Agent economy + MCP tools ─────────────────────────────────── */}

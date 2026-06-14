@@ -155,6 +155,54 @@ async function readPositionSnapshot(
   };
 }
 
+/**
+ * Reads NFPM position snapshots for a fixed list of known tokenIds without
+ * scanning Transfer events. Used when the tokenIds are already known (e.g.,
+ * ROBINHOOD_CANONICAL_TOKEN_ID) and the RPC provider limits getLogs range.
+ * Each tokenId is verified via ownerOf — positions no longer owned are dropped.
+ */
+export async function readNfpmPositionsByTokenIds(
+  client: PublicClient,
+  nfpmAddress: Address,
+  walletAddress: Address,
+  tokenIds: bigint[],
+  latestBlock: bigint,
+): Promise<TransferScanResult> {
+  const ownershipChecks = await Promise.all(
+    tokenIds.map(async (tokenId) => {
+      const owner = await verifyCurrentOwner(
+        client,
+        nfpmAddress,
+        walletAddress,
+        tokenId,
+      );
+      return { tokenId, owner };
+    }),
+  );
+  const currentlyOwnedTokenIds = uniqueSorted(
+    ownershipChecks.filter((c) => c.owner).map((c) => c.tokenId),
+  );
+  const positions = await Promise.all(
+    currentlyOwnedTokenIds.map((tokenId) =>
+      readPositionSnapshot(client, nfpmAddress, tokenId),
+    ),
+  );
+
+  return {
+    walletAddress,
+    nfpmAddress,
+    fromBlock: latestBlock,
+    toBlock: latestBlock,
+    transfers: [],
+    candidateTokenIds: uniqueSorted(tokenIds),
+    currentlyOwnedTokenIds,
+    movedOutTokenIds: tokenIds.filter(
+      (id) => !currentlyOwnedTokenIds.some((owned) => owned === id),
+    ),
+    positions,
+  };
+}
+
 export async function scanNfpmTransfersForWallet(
   client: PublicClient,
   options: TransferScanOptions,

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { AppHeader } from "../components/AppHeader.js";
 import { LabelBadge } from "../components/LabelBadge.js";
 import {
@@ -23,8 +25,8 @@ function formatNumber(n: number, digits = 4): string {
 }
 
 function chainExplorerUrl(chainId: number, txHash: string): string | null {
-  // TODO(robinhood): add Robinhood Chain explorer URL once chain details confirmed
-  void chainId; void txHash;
+  if (chainId === 46630) return null; // Robinhood testnet has no public explorer yet
+  void txHash;
   return null;
 }
 
@@ -291,6 +293,23 @@ function PayloadSections({ payload, token1Symbol }: PayloadSectionsProps) {
           ) : (
             <Row k="warnings" v="none" />
           )}
+        </Section>
+      )}
+
+      {payload.verdict && (
+        <Section title="Verdict" label={payload.verdict.label}>
+          <Row
+            k="recommendation"
+            v={payload.verdict.recommendation.toUpperCase()}
+            tone={payload.verdict.recommendation === "hold" ? "success" : "warning"}
+          />
+          <Row k="provider" v={payload.verdict.provider} />
+          <Row k="model" v={payload.verdict.model} />
+          <div className="report-verdict-markdown prose prose-invert prose-sm max-w-none mt-3 text-sm leading-relaxed text-slate-200">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {payload.verdict.markdown}
+            </ReactMarkdown>
+          </div>
         </Section>
       )}
     </>

@@ -92,7 +92,7 @@ Use it with:
 AGENT_RUNTIME=eliza
 STRATEGIST_PROVIDER=mock
 GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-3.5-flash
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 Smoke test the runtime without starting the server:

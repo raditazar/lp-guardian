@@ -5,7 +5,7 @@ Brand register applies to Landing and Deck (marketing surfaces where design IS t
 
 ## Product Purpose
 
-LP Guardian is a pre-action diagnostic and post-mortem tool for Uniswap v3/v4 concentrated liquidity LPs. Before rebalancing or migrating a position, an LP pastes their NFT position ID and gets a TEE-attested multi-phase analysis: impermanent loss reconstruction, market regime classification (mean-reverting / trending / high-toxic / JIT-dominated), hook risk scoring, and a migration preview. After the run, a report is uploaded to 0G Storage and anchored on-chain — the hash lives in an iNFT (ERC-7857) tied to their agent.
+LP Guardian is a pre-action diagnostic and post-mortem tool for Uniswap v3/v4 concentrated liquidity LPs. Before rebalancing or migrating a position, an LP pastes their NFT position ID and gets a TEE-attested multi-phase analysis: impermanent loss reconstruction, market regime classification (mean-reverting / trending / high-toxic / JIT-dominated), hook risk scoring, and a migration preview. After the run, a report is uploaded to IPFS storage and anchored on-chain — the hash lives in an iNFT (ERC-7857) tied to their agent.
 
 The core promise: every number the agent writes is traceable back to the raw input data (AT-4 hallucination guard), and the verdict is TEE-attested — not a marketing chatbot output.
 
@@ -54,7 +54,7 @@ Key elements from source image that carry into LP Guardian:
 
 **Event**: Arbitrum Open House London Buildathon
 **Chain**: Robinhood Chain (Arbitrum Orbit) — chain config is placeholder + TODO(robinhood) until contract deployment
-**Tech stack preserved from prior phase**: 0G Storage + 0G Compute TEE labels remain in UI with TODO(arch) markers — architecture TBD for Robinhood Chain
+**Tech stack preserved from prior phase**: IPFS storage + Phala TEE labels remain in UI with TODO(arch) markers — architecture TBD for Robinhood Chain
 
 ## Honesty labels (must be preserved, non-negotiable)
 

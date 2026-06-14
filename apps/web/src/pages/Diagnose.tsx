@@ -80,7 +80,7 @@ const PHASES = [
   { phase: 6, code: "hook.score",       label: "Replay hooks" },
   { phase: 7, code: "migration.preview",label: "Build migration" },
   { phase: 8, code: "report.upload",    label: "Upload report" },
-  { phase: 9, code: "anchor.0g",        label: "Anchor root" },
+  { phase: 9, code: "anchor.robinhood",        label: "Anchor root" },
   { phase: 10, code: "verdict.synthesize", label: "TEE verdict" },
 ];
 
@@ -110,11 +110,17 @@ function pickVerdict(events: DiagnosticEvent[]): VerdictMeta | null {
     | Extract<DiagnosticEvent, { type: "verdict.final" }>
     | undefined;
   if (!ev) return null;
+  const rawLabel = ev.labels?.label;
+  const label =
+    rawLabel === "VERIFIED" || rawLabel === "EMULATED" || rawLabel === "ESTIMATED"
+      ? rawLabel
+      : undefined;
   return {
     markdown: ev.markdown,
     model: ev.labels?.model,
     provider: ev.labels?.provider,
-    stub: ev.labels?.label === "EMULATED",
+    stub: rawLabel === "EMULATED",
+    label,
   };
 }
 
@@ -187,10 +193,10 @@ export function Diagnose() {
     if (resolved)   out.push(resolved.label ?? "EMULATED");
     if (ilBreakdown) out.push("COMPUTED");
     if (regime)     out.push("ESTIMATED");
-    if (hooks)      out.push("LABELED");
+    if (hooks)      out.push(hooks.source === "subgraph" ? "VERIFIED" : "EMULATED");
     if (migration)  out.push("EMULATED");
     if (provenance) out.push(provenanceFullyVerified ? "VERIFIED" : "EMULATED");
-    if (verdict)    out.push(verdict.stub ? "EMULATED" : "ESTIMATED");
+    if (verdict)    out.push(verdict.label ?? (verdict.stub ? "EMULATED" : "ESTIMATED"));
     return out;
   }, [ownership, resolved, ilBreakdown, regime, hooks, migration, provenance, provenanceFullyVerified, verdict]);
 

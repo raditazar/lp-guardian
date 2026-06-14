@@ -23,8 +23,8 @@ function shortHash(hash: string): string {
 }
 
 function explorerUrl(chainId: number, txHash: string): string | null {
-  // TODO(robinhood): add Robinhood Chain explorer URL once chain details confirmed
-  void chainId; void txHash;
+  if (chainId === 46630) return null; // Robinhood testnet has no public explorer yet
+  void txHash;
   return null;
 }
 

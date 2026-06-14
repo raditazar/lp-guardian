@@ -35,7 +35,7 @@ export const guardianCharacter: Character = createCharacter({
     ],
   ],
   settings: {
-    model: process.env.GEMINI_MODEL ?? "gemini-3.5-flash",
+    model: process.env.GEMINI_MODEL ?? "gemini-1.5-flash",
     secrets: {
       GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
       PHALA_API_KEY: process.env.PHALA_API_KEY ?? "",

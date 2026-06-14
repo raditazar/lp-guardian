@@ -3,7 +3,7 @@ import { getCurrentPricesUSD } from "../prices/coinGecko.js";
 import { fetchUniswapV3Positions } from "./uniswapV3.js";
 import { fetchUniswapV4Positions } from "./uniswapV4.js";
 import { fetchCamelotPositions } from "./camelot.js";
-import { getMockArbitrumPositions } from "./mockArbitrum.js";
+import { getMockArbitrumPositions, getWalletMock } from "./mockArbitrum.js";
 import type { PositionsResult, V3PositionRaw } from "./types.js";
 
 /**
@@ -42,16 +42,29 @@ export async function fetchPositions(
   });
 
   if (positions.length === 0) {
-    warnings.push(
-      "No live Arbitrum positions found for this wallet; serving mock cartridge.",
-    );
-    return withUsdValue(config, {
+    // For known demo wallets, serve a wallet-specific cartridge so each
+    // demo slot shows the correct "story" (bleeding, healthy, whale, etc.)
+    // even when the Arbitrum RPC is unavailable or rate-limited.
+    // For unknown wallets, return empty positions so the frontend shows
+    // the correct "nothing found" state instead of misleading mock data.
+    const walletMock = getWalletMock(address);
+    if (walletMock) {
+      warnings.push("Live RPC positions unavailable; serving curated demo cartridge for this wallet.");
+      return withUsdValue(config, {
+        address: address.toLowerCase(),
+        version: 1,
+        positions: walletMock,
+        source: "mock",
+        warnings,
+      });
+    }
+    return {
       address: address.toLowerCase(),
       version: 1,
-      positions: getMockArbitrumPositions(address),
-      source: "mock",
+      positions: [],
+      source: "onchain",
       warnings,
-    });
+    };
   }
 
   return withUsdValue(config, {

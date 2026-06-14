@@ -3,11 +3,11 @@ import { expect, test } from "@playwright/test";
 // Full pipeline e2e — drives a real diagnose against a curated wallet
 // with a real chain-bound bleeding position. Verifies every panel
 // renders, every honesty label appears, the SSE stream emits each of
-// the live tool calls, and the final report lands on 0G
+// the live tool calls, and the final report lands on IPFS
 // Storage with a verifiable on-chain anchor.
 //
-// Latency budget: ~75 s for the full pipeline (subgraph + 0G storage
-// + 0G chain + 0G compute).
+// Latency budget: ~75 s for the full pipeline (subgraph + IPFS storage
+// + Robinhood Chain + Phala TEE).
 
 const BLEEDING_TOKEN_ID = "605311";
 

@@ -13,7 +13,7 @@ const envValue = (key: string, fallback = "") => {
   return value?.trim() || fallback;
 };
 const BACKEND_URL      = envValue("VITE_LPGUARDIAN_API_URL", "http://localhost:3001");
-const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "<deploy LPGuardianAgent contract>");
+const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "0x... (iNFT contract — coming soon)");
 const REPORTS_CONTRACT = envValue("VITE_LPGUARDIAN_REPORTS_CONTRACT", "0x9803be5349eedf7c28ac1914b743757ce043b7cc");
 const AGENT_TOKEN_ID   = envValue("VITE_LPGUARDIAN_AGENT_TOKEN_ID", "1");
 const ROBINHOOD_RPC    = envValue("VITE_ROBINHOOD_RPC", "https://rpc.testnet.chain.robinhood.com");
@@ -261,25 +261,25 @@ const CURRENT_TOOLS: ToolRow[] = [
   {
     name: "portfolio_diagnose",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Runs Scan + Correlate on a wallet portfolio and validates selected token ownership before a real verdict.",
   },
   {
     name: "portfolio_simulate",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Runs the deterministic simulation/risk pass through the shared portfolio backend service.",
   },
   {
     name: "portfolio_optimize",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Returns the portfolio-level recommended action from the risk engine without submitting transactions.",
   },
   {
     name: "portfolio_execute",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Prepares an execution preview for a selected LP NFT. This build never submits a transaction bundle.",
   },
   {
@@ -310,7 +310,7 @@ export function Developers() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
           <StickerBadge variant="cobalt">DEVELOPERS</StickerBadge>
           <StickerBadge variant="yellow">MCP · 5 PRODUCT TOOLS</StickerBadge>
-          <StickerBadge variant="magenta" style={{ transform: "rotate(-1.5deg)" }}>0.1 OG / 24H</StickerBadge>
+          <StickerBadge variant="magenta" style={{ transform: "rotate(-1.5deg)" }}>0.1 ETH / 24H</StickerBadge>
         </div>
 
         <h1
@@ -356,8 +356,8 @@ export function Developers() {
         >
           {[
             { label: "TOOLS", value: "6 total", sub: "1 ping · 5 product tools" },
-            { label: "LICENSE", value: "0.1 OG", sub: "24 h · 80/20 royalty" },
-            { label: "BACKEND", value: "Aristotle", sub: "Robinhood Chain + Arbitrum reads" },
+            { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
+            { label: "BACKEND", value: "Robinhood Chain", sub: "Robinhood Chain + Arbitrum reads" },
           ].map(({ label, value, sub }, i) => (
             <div
               key={label}
