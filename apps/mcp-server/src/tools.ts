@@ -126,6 +126,7 @@ export const tools: ToolDefinition[] = [
       properties: {
         ...portfolioDiagnosisProperties,
         dryRun: { type: "boolean", default: true },
+        userApproved: { type: "boolean", default: false },
       },
       required: ["walletAddress", "tokenId"],
       additionalProperties: false,
@@ -250,6 +251,25 @@ function callPortfolioDiagnose(
   }, extras);
 }
 
+function callAgentRun(
+  args: JsonObject,
+  targetAgent: "correlate" | "simulate" | "optimize" | "execute" | "monitor",
+  extras: JsonObject = {},
+): Promise<ToolResult> {
+  const walletAddress = requireString(args, "walletAddress");
+  return callBackendTool("/agent/orchestration/run", {
+    method: "POST",
+    body: JSON.stringify({
+      ...portfolioDiagnosisBody(args),
+      walletAddress,
+      targetAgent,
+      scenario: optionalString(args, "scenario"),
+      dryRun: optionalBoolean(args, "dryRun", true),
+      userApproved: optionalBoolean(args, "userApproved", false),
+    }),
+  }, extras);
+}
+
 function executionDisabledResult(): ToolResult {
   return resultText(
     {
@@ -286,17 +306,17 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       });
 
     case "portfolio_diagnose":
-      return callPortfolioDiagnose(args);
+      return callAgentRun(args, "correlate");
 
     case "portfolio_simulate":
-      return callPortfolioDiagnose(args, {
+      return callAgentRun(args, "simulate", {
         warnings: [
           "Scenario labels are accepted by MCP for traceability; current backend scoring is deterministic from wallet/risk inputs.",
         ],
       });
 
     case "portfolio_optimize":
-      return callPortfolioDiagnose(args, {
+      return callAgentRun(args, "optimize", {
         warnings: [
           "Optimization currently returns the risk-engine suggested action; no transaction route is executed.",
         ],
@@ -306,7 +326,7 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       requireString(args, "tokenId");
       if (!optionalBoolean(args, "dryRun", true)) return executionDisabledResult();
 
-      return callPortfolioDiagnose(args, {
+      return callAgentRun(args, "execute", {
         degraded: true,
         warnings: [
           "Execution preview only. No Permit2 signature, swap, mint, burn, or transaction submission was performed.",
@@ -315,8 +335,7 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
     }
 
     case "portfolio_monitor": {
-      const walletAddress = requireString(args, "walletAddress");
-      return callBackendTool(`/agent/monitor/${walletAddress}`);
+      return callAgentRun(args, "monitor");
     }
 
     case "lp_guardian_get_wallet_positions": {

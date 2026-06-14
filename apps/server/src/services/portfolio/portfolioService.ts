@@ -101,11 +101,11 @@ export class PortfolioService {
       sources.push(...walletRisk.sources);
     }
 
-    if (input.riskInput && input.riskInputSource) {
+    if (input.riskInput) {
       sources.push({
-        name: input.riskInputSource.name ?? "Client supplied aggregate risk input",
-        label: input.riskInputSource.label ?? "EMULATED",
-        notes: input.riskInputSource.notes ?? ["Backend did not derive this riskInput from wallet positions for this request."],
+        name: input.riskInputSource?.name ?? "Client supplied aggregate risk input",
+        label: input.riskInputSource?.label ?? "EMULATED",
+        notes: input.riskInputSource?.notes ?? ["Backend did not derive this riskInput from wallet positions for this request."],
       });
     }
 
