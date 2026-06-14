@@ -19,7 +19,10 @@ export interface ServerConfig {
   robinhoodRpcUrl?: string;
   robinhoodChainId: number;
   robinhoodNfpmAddress?: string;
+  robinhoodV3FactoryAddress?: string;
   robinhoodScanFromBlock?: bigint;
+  robinhoodScanChunkSize: bigint;
+  robinhoodMaxScanRanges: bigint;
 
   /** Backend signer used to anchor reports on-chain (0x-prefixed, validated).
    *  Falls back to the deployer key when WALLET_BACKEND_PK is empty. */
@@ -119,6 +122,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const robinhoodScanFromBlock = env.ROBINHOOD_SCAN_FROM_BLOCK
     ? BigInt(env.ROBINHOOD_SCAN_FROM_BLOCK)
     : undefined;
+  const robinhoodScanChunkSize = env.ROBINHOOD_SCAN_CHUNK_SIZE
+    ? BigInt(env.ROBINHOOD_SCAN_CHUNK_SIZE)
+    : 10n;
+  const robinhoodMaxScanRanges = env.ROBINHOOD_MAX_SCAN_RANGES
+    ? BigInt(env.ROBINHOOD_MAX_SCAN_RANGES)
+    : 1_000n;
 
   const reportRegistry = address(
     env.PortfolioReportRegistry ?? env.LPGUARDIAN_REPORTS_CONTRACT,
@@ -149,7 +158,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     robinhoodRpcUrl: robinhoodRpc,
     robinhoodChainId,
     robinhoodNfpmAddress: nonEmpty(env.ROBINHOOD_NFPM_ADDRESS) ?? undefined,
+    robinhoodV3FactoryAddress:
+      nonEmpty(env.ROBINHOOD_V3_FACTORY_ADDRESS) ?? undefined,
     robinhoodScanFromBlock,
+    robinhoodScanChunkSize,
+    robinhoodMaxScanRanges,
 
     anchorSignerPk,
     walletBackendPrivateKey: anchorSignerPk ?? undefined,

@@ -11,6 +11,7 @@
     "agent:smoke": "tsx src/scripts/smokeElizaRuntime.ts",
     "agent:test": "tsx src/scripts/testElizaAgentRuntime.ts",
     "risk:pipeline": "tsx src/scripts/runAggregateRiskPipeline.ts",
+    "canonical:smoke": "tsx src/scripts/smokeCanonicalRobinhood.ts",
     "scan:robinhood-transfers": "tsx src/scripts/scanRobinhoodTransfers.ts",
     "smoke:robinhood-contracts": "tsx src/scripts/smokeRobinhoodContracts.ts",
     "smoke:swap-replay": "tsx src/scripts/smokeSwapReplay.ts"

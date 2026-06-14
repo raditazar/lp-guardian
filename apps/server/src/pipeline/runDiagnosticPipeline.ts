@@ -30,6 +30,8 @@ import type {
   StrategistAdvice,
 } from "../services/agentRuntime/index.js";
 import type { VerdictResult } from "./verdict.js";
+import { createRobinhoodPublicClient } from "../services/robinhood/client.js";
+import { validateNfpmTokenOwnership } from "../services/ownership.js";
 
 const REGIME_WINDOW_HOURS = 72;
 
@@ -49,6 +51,41 @@ export async function* runDiagnosticPipeline(
 ): AsyncGenerator<DiagnosticEvent> {
   // ---- Phase 1: resolve position ----
   yield { type: "phase.start", phase: 1, label: "Resolve position" };
+  const requestedWallet = options.foundationInput?.walletAddress;
+
+  if (requestedWallet) {
+    yield {
+      type: "tool.call",
+      tool: "validateOwnership",
+      input: { walletAddress: requestedWallet, tokenId },
+    };
+    const t0 = Date.now();
+    const ownership = await validateRobinhoodOwnershipForDiagnostic(
+      config,
+      requestedWallet,
+      tokenId,
+    );
+    yield {
+      type: "tool.result",
+      tool: "validateOwnership",
+      latencyMs: Date.now() - t0,
+      output: {
+        ...ownership,
+        label: ownership.status === "verified" ? "VERIFIED" : "EMULATED",
+      },
+    };
+
+    if (ownership.status === "mismatch") {
+      yield {
+        type: "error",
+        phase: 1,
+        message: `Ownership mismatch: token ${tokenId} is owned by ${ownership.ownerAddress}, not ${requestedWallet}.`,
+      };
+      yield { type: "phase.end", phase: 1, durationMs: Date.now() - t0 };
+      return;
+    }
+  }
+
   yield { type: "tool.call", tool: "getV3Position", input: { tokenId } };
 
   const t1 = Date.now();
@@ -63,13 +100,53 @@ export async function* runDiagnosticPipeline(
   const token1 = pos.pool.token1.id;
   const tickLower = Number(pos.tickLower.tickIdx);
   const tickUpper = Number(pos.tickUpper.tickIdx);
+  const ownershipMatches =
+    requestedWallet && resolved.source === "onchain"
+      ? sameAddress(resolved.owner, requestedWallet)
+      : undefined;
+  const resolveLabel = resolved.source === "onchain" ? "VERIFIED" : "EMULATED";
 
   yield {
     type: "tool.result",
     tool: "getV3Position",
     latencyMs: Date.now() - t1,
-    output: { pair, tickLower, tickUpper, liquidity: pos.liquidity },
+    output: {
+      pair,
+      tickLower,
+      tickUpper,
+      liquidity: pos.liquidity,
+      owner: resolved.owner,
+      source: resolved.source,
+      label: resolveLabel,
+      ownership: {
+        requestedWallet,
+        owner: resolved.owner,
+        status:
+          ownershipMatches === undefined
+            ? resolved.source === "mock"
+              ? "unavailable"
+              : "not-requested"
+            : ownershipMatches
+              ? "verified"
+              : "mismatch",
+        label: resolveLabel,
+      },
+    },
   };
+  if (
+    requestedWallet &&
+    resolved.source === "onchain" &&
+    !sameAddress(resolved.owner, requestedWallet)
+  ) {
+    yield {
+      type: "error",
+      phase: 1,
+      message: `Ownership mismatch: token ${tokenId} is owned by ${resolved.owner}, not ${requestedWallet}.`,
+    };
+    yield { type: "phase.end", phase: 1, durationMs: Date.now() - t1 };
+    return;
+  }
+
   yield {
     type: "narrative",
     text:
@@ -443,6 +520,48 @@ interface DiagnosticPipelineOptions {
   protocolHint?: Protocol;
 }
 
+interface DiagnosticOwnershipResult {
+  status: "verified" | "mismatch" | "unavailable";
+  walletAddress: string;
+  tokenId: string;
+  ownerAddress?: string;
+  reason?: string;
+}
+
+async function validateRobinhoodOwnershipForDiagnostic(
+  config: ServerConfig,
+  walletAddress: string,
+  tokenId: string,
+): Promise<DiagnosticOwnershipResult> {
+  try {
+    const client = createRobinhoodPublicClient(config);
+    const latestBlock = await client.getBlockNumber().catch(() => undefined);
+    const result = await validateNfpmTokenOwnership({
+      client,
+      chainId: config.robinhoodChainId,
+      nfpmAddress: config.robinhoodNfpmAddress as `0x${string}` | undefined,
+      walletAddress: walletAddress as `0x${string}`,
+      tokenId,
+      blockNumber: latestBlock,
+    });
+
+    return {
+      status: result.status,
+      walletAddress,
+      tokenId,
+      ownerAddress: result.ownerAddress,
+      reason: result.reason,
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      walletAddress,
+      tokenId,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 interface PayloadInputs {
   tokenId: string;
   pair: string;
@@ -605,6 +724,10 @@ function estimateBaselineApr(feesValueUsd: number, lpValueUsd: number): number {
 function normalizeOwner(owner: string): `0x${string}` {
   if (/^0x[0-9a-fA-F]{40}$/.test(owner)) return owner as `0x${string}`;
   return "0x000000000000000000000000000000000000dEaD";
+}
+
+function sameAddress(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
 }
 
 function safeBigInt(tokenId: string): bigint {
