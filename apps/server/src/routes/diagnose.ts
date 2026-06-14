@@ -22,6 +22,7 @@ export function createDiagnoseRoute(
     const parsedQuery = diagnoseQuerySchema.safeParse({
       walletAddress: c.req.query("walletAddress"),
       scenario: c.req.query("scenario"),
+      protocol: c.req.query("protocol"),
     });
 
     const stream = new ReadableStream<Uint8Array>({
@@ -40,6 +41,7 @@ export function createDiagnoseRoute(
           for await (const event of runDiagnosticPipeline(config, tokenId, {
             agentRuntime,
             foundationInput: parsedQuery.data,
+            protocolHint: parsedQuery.data.protocol,
           })) {
             controller.enqueue(encodeSse(event));
           }

@@ -21,6 +21,7 @@ function isSuccessfulTerminal(events: DiagnosticEvent[]): boolean {
 export function useDiagnosticStream(
   tokenId: string | null,
   walletAddress?: string,
+  protocol?: string,
 ): State {
   const [state, setState] = useState<State>({ events: [], status: "idle" });
   const eventsRef = useRef<DiagnosticEvent[]>([]);
@@ -36,6 +37,7 @@ export function useDiagnosticStream(
 
     const params = new URLSearchParams();
     if (walletAddress) params.set("walletAddress", walletAddress);
+    if (protocol) params.set("protocol", protocol);
     const query = params.toString();
     const url = `${API_BASE_URL}/api/diagnose/${tokenId}${query ? `?${query}` : ""}`;
     const es = new EventSource(url);
@@ -94,7 +96,7 @@ export function useDiagnosticStream(
     return () => {
       es.close();
     };
-  }, [tokenId, walletAddress]);
+  }, [tokenId, walletAddress, protocol]);
 
   return state;
 }

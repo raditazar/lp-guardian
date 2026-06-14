@@ -75,15 +75,13 @@ function ts(unix: number) {
 
 /* ─── MCP tool manifest ──────────────────────────────────────────────── */
 
-const MCP_TOOLS = [
-  { name: "diagnose",           gated: true,  desc: "Run full LP diagnostic on a tokenId. Returns phases, IL, regime, hooks, migration." },
-  { name: "preflight",          gated: true,  desc: "Quick health check — range, fee ratio, tick status. No hooks replay." },
-  { name: "migrate",            gated: true,  desc: "Trigger migration preview + Permit2 bundle for a diagnosed position." },
-  { name: "lookupReport",       gated: false, desc: "Fetch a signed report by rootHash from storage." },
-  { name: "lookupReportOnChain",gated: false, desc: "Resolve report anchor from chain tx by rootHash." },
+const CURRENT_MCP_TOOLS = [
+  { name: "portfolio_diagnose", gated: true, desc: "Scan and correlate a wallet portfolio, with token ownership validation when tokenId is supplied." },
+  { name: "portfolio_simulate", gated: true, desc: "Run deterministic portfolio risk simulation through the shared backend service." },
+  { name: "portfolio_optimize", gated: true, desc: "Return the portfolio-level recommended action from the risk engine." },
+  { name: "portfolio_execute", gated: true, desc: "Prepare an execution preview. This build never submits a transaction bundle." },
+  { name: "portfolio_monitor", gated: false, desc: "Fetch a point-in-time wallet portfolio snapshot for monitor and alert agents." },
 ];
-
-/* ─── Page ──────────────────────────────────────────────────────────── */
 
 export function Agent() {
   const { data, loading, error } = useAgentLiveState();
@@ -411,13 +409,13 @@ export function Agent() {
               ACCESS
             </div>
 
-            {MCP_TOOLS.map((tool, i) => (
+            {CURRENT_MCP_TOOLS.map((tool, i) => (
               <>
                 <div
                   key={`name-${tool.name}`}
                   style={{
                     padding: "10px 12px",
-                    borderBottom: i < MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
+                    borderBottom: i < CURRENT_MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
                     background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
                   }}
                 >
@@ -432,7 +430,7 @@ export function Agent() {
                   key={`access-${tool.name}`}
                   style={{
                     padding: "10px 12px",
-                    borderBottom: i < MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
+                    borderBottom: i < CURRENT_MCP_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
                     borderLeft: "1px solid var(--lp-border-soft)",
                     background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
                     display: "flex",

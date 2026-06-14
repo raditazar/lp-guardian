@@ -11,7 +11,9 @@ import {
 } from "../chain/abis.js";
 import { amountsForLiquidity, toHuman, uncollectedFees } from "./lpMath.js";
 import { getMockArbitrumPositions } from "./mockArbitrum.js";
-import type { V3PositionRaw } from "./types.js";
+import { resolveCamelotByTokenId } from "./camelot.js";
+import { resolveV4ByTokenId } from "./uniswapV4.js";
+import type { Protocol, V3PositionRaw } from "./types.js";
 
 export interface ResolvedPosition {
   position: V3PositionRaw;
@@ -21,25 +23,49 @@ export interface ResolvedPosition {
 
 const ZERO = "0x0000000000000000000000000000000000000000";
 
+/** Default protocol probe order when no hint is supplied. V3 first (cheapest,
+ *  most common), then Camelot, then V4. */
+const DEFAULT_ORDER: Protocol[] = ["uniswap-v3", "camelot", "uniswap-v4"];
+
 /**
- * Resolves a single Uniswap v3 position by tokenId from Arbitrum One via RPC.
- * Falls back to a deterministic mock position when the tokenId can't be read
- * (e.g. doesn't exist on this PM, or RPC unavailable) so the pipeline runs.
+ * Resolves a single LP position by tokenId from Arbitrum One via RPC, across
+ * Uniswap v3, Camelot (Algebra), and Uniswap v4. A `protocolHint` (passed by the
+ * frontend from the position card) is tried first — important because the same
+ * numeric tokenId can exist on multiple PMs. Falls back to a deterministic mock
+ * when nothing resolves so the pipeline always runs.
  */
 export async function resolvePositionByTokenId(
   config: ServerConfig,
   tokenId: string,
+  protocolHint?: Protocol,
 ): Promise<ResolvedPosition> {
-  try {
-    const resolved = await readOnchain(config, tokenId);
-    if (resolved) return resolved;
-  } catch (err) {
-    console.warn(`[resolvePosition] on-chain read failed: ${String(err)}`);
+  const order =
+    protocolHint && DEFAULT_ORDER.includes(protocolHint)
+      ? [protocolHint, ...DEFAULT_ORDER.filter((p) => p !== protocolHint)]
+      : DEFAULT_ORDER;
+
+  for (const protocol of order) {
+    try {
+      if (protocol === "uniswap-v3") {
+        const r = await resolveV3ByTokenId(config, tokenId);
+        if (r) return r;
+      } else if (protocol === "camelot") {
+        const r = await resolveCamelotByTokenId(config, tokenId);
+        if (r) return { ...r, source: "onchain" };
+      } else if (protocol === "uniswap-v4") {
+        const r = await resolveV4ByTokenId(config, tokenId);
+        if (r) return { ...r, source: "onchain" };
+      }
+    } catch (err) {
+      console.warn(
+        `[resolvePosition] ${protocol} read failed for #${tokenId}: ${String(err)}`,
+      );
+    }
   }
   return mockResolved(tokenId);
 }
 
-async function readOnchain(
+async function resolveV3ByTokenId(
   config: ServerConfig,
   tokenId: string,
 ): Promise<ResolvedPosition | null> {

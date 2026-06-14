@@ -15,9 +15,14 @@ import { discoverHooksFromSubgraph } from "./hooks/v4HookDiscovery.js";
 import { scoreHook } from "./hooks/hookScorer.js";
 import { buildMigrationPreview } from "./migration.js";
 import { synthesizeVerdict } from "./verdict.js";
+import { replaySwaps, type SwapReplayResult } from "./swapReplay.js";
+import { getSwapsForReplay } from "../indexer/graphSwaps.js";
+import { ARBITRUM_ADDRESSES } from "../chain/abis.js";
+import type { Protocol } from "../indexer/types.js";
 import { uploadReport } from "../storage/index.js";
 import { updateAnchor } from "../storage/reportStore.js";
 import { anchorReport } from "../chain/reportRegistry.js";
+import { publishReplay } from "../chain/swapReplayVerifier.js";
 import type { AssembledReportPayload } from "./reportTypes.js";
 import type { FoundationRunRequest } from "../schemas/agent.js";
 import type {
@@ -25,6 +30,8 @@ import type {
   StrategistAdvice,
 } from "../services/agentRuntime/index.js";
 import type { VerdictResult } from "./verdict.js";
+import { createRobinhoodPublicClient } from "../services/robinhood/client.js";
+import { validateNfpmTokenOwnership } from "../services/ownership.js";
 
 const REGIME_WINDOW_HOURS = 72;
 
@@ -44,23 +51,102 @@ export async function* runDiagnosticPipeline(
 ): AsyncGenerator<DiagnosticEvent> {
   // ---- Phase 1: resolve position ----
   yield { type: "phase.start", phase: 1, label: "Resolve position" };
+  const requestedWallet = options.foundationInput?.walletAddress;
+
+  if (requestedWallet) {
+    yield {
+      type: "tool.call",
+      tool: "validateOwnership",
+      input: { walletAddress: requestedWallet, tokenId },
+    };
+    const t0 = Date.now();
+    const ownership = await validateRobinhoodOwnershipForDiagnostic(
+      config,
+      requestedWallet,
+      tokenId,
+    );
+    yield {
+      type: "tool.result",
+      tool: "validateOwnership",
+      latencyMs: Date.now() - t0,
+      output: {
+        ...ownership,
+        label: ownership.status === "verified" ? "VERIFIED" : "EMULATED",
+      },
+    };
+
+    if (ownership.status === "mismatch") {
+      yield {
+        type: "error",
+        phase: 1,
+        message: `Ownership mismatch: token ${tokenId} is owned by ${ownership.ownerAddress}, not ${requestedWallet}.`,
+      };
+      yield { type: "phase.end", phase: 1, durationMs: Date.now() - t0 };
+      return;
+    }
+  }
+
   yield { type: "tool.call", tool: "getV3Position", input: { tokenId } };
 
   const t1 = Date.now();
-  const resolved = await resolvePositionByTokenId(config, tokenId);
+  const resolved = await resolvePositionByTokenId(
+    config,
+    tokenId,
+    options.protocolHint,
+  );
   const pos = resolved.position;
   const pair = `${pos.pool.token0.symbol}/${pos.pool.token1.symbol}`;
   const token0 = pos.pool.token0.id;
   const token1 = pos.pool.token1.id;
   const tickLower = Number(pos.tickLower.tickIdx);
   const tickUpper = Number(pos.tickUpper.tickIdx);
+  const ownershipMatches =
+    requestedWallet && resolved.source === "onchain"
+      ? sameAddress(resolved.owner, requestedWallet)
+      : undefined;
+  const resolveLabel = resolved.source === "onchain" ? "VERIFIED" : "EMULATED";
 
   yield {
     type: "tool.result",
     tool: "getV3Position",
     latencyMs: Date.now() - t1,
-    output: { pair, tickLower, tickUpper, liquidity: pos.liquidity },
+    output: {
+      pair,
+      tickLower,
+      tickUpper,
+      liquidity: pos.liquidity,
+      owner: resolved.owner,
+      source: resolved.source,
+      label: resolveLabel,
+      ownership: {
+        requestedWallet,
+        owner: resolved.owner,
+        status:
+          ownershipMatches === undefined
+            ? resolved.source === "mock"
+              ? "unavailable"
+              : "not-requested"
+            : ownershipMatches
+              ? "verified"
+              : "mismatch",
+        label: resolveLabel,
+      },
+    },
   };
+  if (
+    requestedWallet &&
+    resolved.source === "onchain" &&
+    !sameAddress(resolved.owner, requestedWallet)
+  ) {
+    yield {
+      type: "error",
+      phase: 1,
+      message: `Ownership mismatch: token ${tokenId} is owned by ${resolved.owner}, not ${requestedWallet}.`,
+    };
+    yield { type: "phase.end", phase: 1, durationMs: Date.now() - t1 };
+    return;
+  }
+
   yield {
     type: "narrative",
     text:
@@ -80,6 +166,103 @@ export async function* runDiagnosticPipeline(
     getPriceAt(config, token0, thenMs),
     getPriceAt(config, token1, thenMs),
   ]);
+
+  // ---- Phase 2: replay swaps (fills the intentionally-empty phase-2 slot) ----
+  yield { type: "phase.start", phase: 2, label: "Replay swaps" };
+  yield { type: "tool.call", tool: "replaySwaps", input: { pool: pos.pool.id, tokenId } };
+  const t2 = Date.now();
+  let replay: SwapReplayResult | undefined;
+  let replayAnchor:
+    | { replayId: string; txHash: string; onchain: boolean }
+    | undefined;
+  let replaySource: "subgraph" | "rpc" | "none" = "none";
+  const protocol: Protocol = pos.protocol ?? "uniswap-v3";
+  // Replay real on-chain pools only; mock cartridges have no swaps to source.
+  if (resolved.source === "onchain") {
+    try {
+      const feePips = Number(pos.pool.feeTier) > 0 ? Number(pos.pool.feeTier) : 3000;
+      // Per-protocol swap indexing: The Graph first (v3/v4/camelot), RPC
+      // getLogs fallback for v3/camelot. V4 has no per-pool address on-chain.
+      const fetched = await getSwapsForReplay(config, {
+        protocol,
+        poolKey: pos.pool.id,
+        token0Decimals: Number(pos.pool.token0.decimals),
+        token1Decimals: Number(pos.pool.token1.decimals),
+      });
+      replaySource = fetched.source;
+      replay = replaySwaps({
+        pool: pos.pool.id,
+        tickLower,
+        tickUpper,
+        positionLiquidity: safeBigInt(pos.liquidity),
+        feePips,
+        token0Decimals: Number(pos.pool.token0.decimals),
+        token1Decimals: Number(pos.pool.token1.decimals),
+        price0Usd: price0Now,
+        price1Usd: price1Now,
+        swaps: fetched.swaps,
+        fromBlock: fetched.fromBlock,
+        toBlock: fetched.toBlock,
+      });
+      // Anchor the replay proof on Robinhood Chain when the window has swaps.
+      if (replay.swapCount > 0) {
+        const attestationHash = keccak256(
+          toBytes(`${replay.inputRoot}${replay.resultHash.slice(2)}`),
+        ) as Hex;
+        // V4 poolId is a 32-byte id, not a 20-byte address — anchor against the
+        // singleton PoolManager (the real poolId is bound inside inputRoot).
+        const anchorPool = (
+          protocol === "uniswap-v4"
+            ? ARBITRUM_ADDRESSES.v4PoolManager
+            : pos.pool.id
+        ) as `0x${string}`;
+        const pub = await publishReplay(config, {
+          portfolioOwner: normalizeOwner(resolved.owner),
+          subjectId: safeBigInt(tokenId),
+          pool: anchorPool,
+          fromBlock: BigInt(replay.fromBlock),
+          toBlock: BigInt(replay.toBlock),
+          swapCount: replay.swapCount,
+          inputRoot: replay.inputRoot,
+          resultHash: replay.resultHash,
+          attestationHash,
+        });
+        replayAnchor = {
+          replayId: pub.replayId,
+          txHash: pub.txHash,
+          onchain: pub.onchain,
+        };
+      }
+    } catch (err) {
+      yield { type: "narrative", text: `Swap replay skipped: ${String(err)}` };
+    }
+  }
+  yield {
+    type: "tool.result",
+    tool: "replaySwaps",
+    latencyMs: Date.now() - t2,
+    output: replay
+      ? {
+          ...replay,
+          protocol,
+          swapSource: replaySource,
+          replayId: replayAnchor?.replayId,
+          anchorTx: replayAnchor?.txHash,
+          onchain: replayAnchor?.onchain ?? false,
+        }
+      : { skipped: true, reason: "no on-chain pool / mock cartridge" },
+  };
+  yield {
+    type: "narrative",
+    text:
+      replay && replay.swapCount > 0
+        ? `Replayed ${replay.swapCount} real swaps (${replay.swapsInRange} in-range) via ${replaySource === "subgraph" ? "The Graph" : "RPC"}. Counterfactual fees ≈ $${replay.feesUsd.toFixed(2)}${
+            replayAnchor?.onchain ? ", proof anchored on Robinhood Chain." : "."
+          }`
+        : "No swaps in the scanned window — replay reported as EMULATED.",
+  };
+  yield { type: "phase.end", phase: 2, durationMs: Date.now() - t2 };
+  await sleep(40);
 
   // ---- Phase 3: compute IL ----
   yield { type: "phase.start", phase: 3, label: "Compute IL" };
@@ -260,6 +443,9 @@ export async function* runDiagnosticPipeline(
     migration,
     verdict: finalVerdict,
     strategistAdvice,
+    replay,
+    replayAnchor,
+    replaySource,
   });
   const upload = await uploadReport(config, payload);
   yield {
@@ -331,6 +517,49 @@ export async function* runDiagnosticPipeline(
 interface DiagnosticPipelineOptions {
   agentRuntime?: AgentRuntime;
   foundationInput?: FoundationRunRequest;
+  protocolHint?: Protocol;
+}
+
+interface DiagnosticOwnershipResult {
+  status: "verified" | "mismatch" | "unavailable";
+  walletAddress: string;
+  tokenId: string;
+  ownerAddress?: string;
+  reason?: string;
+}
+
+async function validateRobinhoodOwnershipForDiagnostic(
+  config: ServerConfig,
+  walletAddress: string,
+  tokenId: string,
+): Promise<DiagnosticOwnershipResult> {
+  try {
+    const client = createRobinhoodPublicClient(config);
+    const latestBlock = await client.getBlockNumber().catch(() => undefined);
+    const result = await validateNfpmTokenOwnership({
+      client,
+      chainId: config.robinhoodChainId,
+      nfpmAddress: config.robinhoodNfpmAddress as `0x${string}` | undefined,
+      walletAddress: walletAddress as `0x${string}`,
+      tokenId,
+      blockNumber: latestBlock,
+    });
+
+    return {
+      status: result.status,
+      walletAddress,
+      tokenId,
+      ownerAddress: result.ownerAddress,
+      reason: result.reason,
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      walletAddress,
+      tokenId,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 interface PayloadInputs {
@@ -344,6 +573,9 @@ interface PayloadInputs {
   migration: ReturnType<typeof buildMigrationPreview>;
   verdict: Awaited<ReturnType<typeof synthesizeVerdict>>;
   strategistAdvice?: StrategistAdvice;
+  replay?: SwapReplayResult;
+  replayAnchor?: { replayId: string; txHash: string; onchain: boolean };
+  replaySource?: "subgraph" | "rpc" | "none";
 }
 
 function buildPayload(i: PayloadInputs): AssembledReportPayload {
@@ -377,6 +609,24 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
       ilT1: i.il.ilT1,
       ilPct: i.il.ilPct,
     },
+    swapReplay: i.replay
+      ? {
+          pool: i.replay.pool,
+          swapSource: i.replaySource,
+          swapCount: i.replay.swapCount,
+          swapsInRange: i.replay.swapsInRange,
+          feesUsd: i.replay.feesUsd,
+          grossVolumeUsd: i.replay.grossVolumeUsd,
+          fromBlock: i.replay.fromBlock,
+          toBlock: i.replay.toBlock,
+          inputRoot: i.replay.inputRoot,
+          resultHash: i.replay.resultHash,
+          replayId: i.replayAnchor?.replayId,
+          anchorTxHash: i.replayAnchor?.txHash,
+          anchorStub: i.replayAnchor ? !i.replayAnchor.onchain : undefined,
+          label: i.replay.label,
+        }
+      : undefined,
     regime: {
       topLabel: i.regime.topLabel,
       confidence: i.regime.confidence,
@@ -474,6 +724,10 @@ function estimateBaselineApr(feesValueUsd: number, lpValueUsd: number): number {
 function normalizeOwner(owner: string): `0x${string}` {
   if (/^0x[0-9a-fA-F]{40}$/.test(owner)) return owner as `0x${string}`;
   return "0x000000000000000000000000000000000000dEaD";
+}
+
+function sameAddress(left: string, right: string): boolean {
+  return left.toLowerCase() === right.toLowerCase();
 }
 
 function safeBigInt(tokenId: string): bigint {

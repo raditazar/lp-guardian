@@ -438,7 +438,7 @@ export function Landing() {
                   { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 OG for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
                   { tag: "02", title: "memoryRoot evolves per run", desc: "Each diagnose updates agents(1).memoryRoot to the new Storage blob." },
                   { tag: "03", title: "reputation + migrationsTriggered", desc: "Two on-chain counters move per run. recordMigration bumps when user signs." },
-                  { tag: "04", title: "5 MCP tools — 3 gated, 2 free", desc: "diagnose / preflight / migrate gated. lookupReport / lookupReportOnChain public." },
+                  { tag: "04", title: "5 MCP product tools", desc: "portfolio_diagnose / simulate / optimize / execute / monitor exposed through MCP." },
                 ].map((c) => (
                   <div
                     key={c.tag}

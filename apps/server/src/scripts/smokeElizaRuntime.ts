@@ -1,9 +1,9 @@
-import { loadLocalEnv } from "../config.js";
+import { loadConfig, loadLocalEnv } from "../config.js";
 import { ElizaAgentRuntime } from "../services/agentRuntime/elizaRuntime.js";
 
 loadLocalEnv();
 
-const runtime = new ElizaAgentRuntime();
+const runtime = new ElizaAgentRuntime(loadConfig());
 const result = await runtime.runFoundation({
   walletAddress: "0x0000000000000000000000000000000000000000",
   scenario: "dust-and-correlation",

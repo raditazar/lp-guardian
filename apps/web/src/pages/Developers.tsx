@@ -188,19 +188,19 @@ const TOOLS: ToolRow[] = [
   {
     name: "lpguardian.diagnose",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Runs the full LP Guardian pipeline on a tokenId and returns the structured verdict, provenance, and migration context.",
   },
   {
     name: "lpguardian.preflight",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Lightweight health check for a position. Stops before the full verdict to answer whether a deeper diagnosis is warranted.",
   },
   {
     name: "lpguardian.migrate",
     access: "GATED",
-    price: "0.1 OG / 24 h",
+    price: "0.1 ETH / 24 h",
     description: "Builds the Permit2 migration payload from a diagnosed report. Prepares typed data only — never submits a swap bundle.",
   },
   {
@@ -273,18 +273,57 @@ await client.connect(
 );
 
 const result = await client.callTool({
-  name: "lpguardian.diagnose",
+  name: "portfolio_diagnose",
   arguments: {
+    walletAddress: "0xYourWallet",
     tokenId: "605311",
-    caller: "0xYourAddress",
   },
 });
 
 console.log(result);
-// If caller is unlicensed, gated tools return payment metadata
-// with the contract + tokenId needed for mintLicense.`;
+// Product tools return provenance fields: label, warnings,
+// mockUsed, degraded, and the backend result.`;
 
 /* ─── Page ──────────────────────────────────────────────────────────── */
+
+const CURRENT_TOOLS: ToolRow[] = [
+  {
+    name: "lp_guardian_ping",
+    access: "FREE",
+    price: "FREE",
+    description: "Transport liveness check. Useful for confirming the MCP server is reachable before invoking product tools.",
+  },
+  {
+    name: "portfolio_diagnose",
+    access: "GATED",
+    price: "0.1 OG / 24 h",
+    description: "Runs Scan + Correlate on a wallet portfolio and validates selected token ownership before a real verdict.",
+  },
+  {
+    name: "portfolio_simulate",
+    access: "GATED",
+    price: "0.1 OG / 24 h",
+    description: "Runs the deterministic simulation/risk pass through the shared portfolio backend service.",
+  },
+  {
+    name: "portfolio_optimize",
+    access: "GATED",
+    price: "0.1 OG / 24 h",
+    description: "Returns the portfolio-level recommended action from the risk engine without submitting transactions.",
+  },
+  {
+    name: "portfolio_execute",
+    access: "GATED",
+    price: "0.1 OG / 24 h",
+    description: "Prepares an execution preview for a selected LP NFT. This build never submits a transaction bundle.",
+  },
+  {
+    name: "portfolio_monitor",
+    access: "FREE",
+    price: "FREE",
+    description: "Fetches a point-in-time wallet portfolio snapshot for monitor and alert agents.",
+  },
+];
 
 export function Developers() {
   return (
@@ -305,7 +344,7 @@ export function Developers() {
       >
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
           <StickerBadge variant="cobalt">DEVELOPERS</StickerBadge>
-          <StickerBadge variant="yellow">MCP · 6 TOOLS</StickerBadge>
+          <StickerBadge variant="yellow">MCP · 5 PRODUCT TOOLS</StickerBadge>
           <StickerBadge variant="magenta" style={{ transform: "rotate(-1.5deg)" }}>0.1 OG / 24H</StickerBadge>
         </div>
 
@@ -339,6 +378,7 @@ export function Developers() {
           today — hosted SSE on the roadmap.
         </p>
 
+<<<<<<< HEAD
           {/* TODO(arch): Storage labels */}
           <div
             style={{
@@ -355,6 +395,24 @@ export function Developers() {
               { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
               { label: "BACKEND", value: "Aristotle", sub: "Robinhood Chain + Arbitrum reads" },
             ].map(({ label, value, sub }, i) => (
+=======
+        {/* Fact strip — replaces MetricCard hero grid */}
+        <div
+          style={{
+            display: "inline-flex",
+            gap: 0,
+            border: "1.5px solid var(--lp-border)",
+            borderRadius: 3,
+            overflow: "hidden",
+            boxShadow: "3px 3px 0 var(--lp-border)",
+          }}
+        >
+          {[
+            { label: "TOOLS", value: "6 total", sub: "1 ping · 5 product tools" },
+            { label: "LICENSE", value: "0.1 OG", sub: "24 h · 80/20 royalty" },
+            { label: "BACKEND", value: "Aristotle", sub: "0G Mainnet + Ethereum reads" },
+          ].map(({ label, value, sub }, i) => (
+>>>>>>> origin/main
             <div
               key={label}
               style={{
@@ -444,11 +502,11 @@ export function Developers() {
                 </tr>
               </thead>
               <tbody>
-                {TOOLS.map((tool, i) => (
+                {CURRENT_TOOLS.map((tool, i) => (
                   <tr
                     key={tool.name}
                     style={{
-                      borderBottom: i < TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
+                      borderBottom: i < CURRENT_TOOLS.length - 1 ? "1px solid var(--lp-border-soft)" : "none",
                       background: i % 2 === 0 ? "transparent" : "color-mix(in oklch, var(--lp-purple) 2%, transparent)",
                     }}
                   >
@@ -629,11 +687,11 @@ export function Developers() {
           <div className="lp-window-body">
             <p style={{ margin: "0 0 14px", fontFamily: "var(--font-sans)", fontSize: 13, color: "var(--lp-ink-soft)", lineHeight: 1.65, maxWidth: "68ch" }}>
               The free verification path is intentionally public. Other agents can resolve a cached report
-              by rootHash through{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>lpguardian.lookupReport</code>,
-              or bypass the LP Guardian server entirely through{" "}
-              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>lpguardian.lookupReportOnChain</code>,
-              which reads the mainnet{" "}
+              through the portfolio MCP surface. Use{" "}
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_diagnose</code>{" "}
+              for a signed backend report flow and{" "}
+              <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-cobalt)" }}>portfolio_monitor</code>{" "}
+              for an agent-readable snapshot. On-chain verification reads the mainnet{" "}
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-purple)" }}>LPGuardianReports</code>{" "}
               contract at{" "}
               <code style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--lp-ink-faint)" }}>{REPORTS_CONTRACT}</code>{" "}
