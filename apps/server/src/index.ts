@@ -5,10 +5,10 @@ import { MonitorService } from "./services/portfolio/monitorService.js";
 
 loadLocalEnv();
 const config = loadConfig();
-const app = createApp(config);
 
 // Start autonomous background monitoring
 const monitor = new MonitorService(config);
+const app = createApp(config, { monitorService: monitor });
 monitor.start();
 
 serve(

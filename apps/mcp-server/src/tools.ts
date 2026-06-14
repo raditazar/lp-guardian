@@ -134,7 +134,7 @@ export const tools: ToolDefinition[] = [
   {
     name: "portfolio_monitor",
     description:
-      "Fetch a current wallet portfolio snapshot for monitor/alert agents. This is a point-in-time scan, not a persistent scheduler.",
+      "Fetch the autonomous Monitor Agent state, including last scan status, issues, and alert correlation metadata.",
     inputSchema: {
       type: "object",
       properties: {
@@ -316,11 +316,7 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
 
     case "portfolio_monitor": {
       const walletAddress = requireString(args, "walletAddress");
-      return callBackendTool(`/api/portfolio/${walletAddress}/positions`, undefined, {
-        warnings: [
-          "Monitor is a point-in-time wallet scan in this build; persistent alert scheduling is not enabled.",
-        ],
-      });
+      return callBackendTool(`/agent/monitor/${walletAddress}`);
     }
 
     case "lp_guardian_get_wallet_positions": {

@@ -7,20 +7,28 @@ import { createAgentRuntime } from "./services/agentRuntime/index.js";
 import { createDiagnoseRoute } from "./routes/diagnose.js";
 import { createAgentRuntimeRoute } from "./routes/agent/runtime.js";
 import { createHealthRoute } from "./routes/health.js";
+import { createAgentMonitorRoute } from "./routes/agent/monitor.js";
 import { createAgentFoundationRunRoute } from "./routes/agent/run.js";
 import { createPositionsRoute } from "./routes/positions.js";
 import { createReportRoute } from "./routes/report.js";
 import { createPortfolioRoute } from "./routes/portfolio.js";
+import { MonitorService } from "./services/portfolio/monitorService.js";
 
-export function createApp(config: ServerConfig): Hono {
+export interface AppServices {
+  monitorService?: MonitorService;
+}
+
+export function createApp(config: ServerConfig, services: AppServices = {}): Hono {
   const app = new Hono();
   const agentRuntime = createAgentRuntime(config);
+  const monitorService = services.monitorService ?? new MonitorService(config);
 
   app.use("*", requestContext());
   app.use("*", requestLogger());
 
   app.route("/health", createHealthRoute(config));
   app.route("/agent/runtime", createAgentRuntimeRoute(config));
+  app.route("/agent/monitor", createAgentMonitorRoute(monitorService));
   app.route("/agent/foundation/run", createAgentFoundationRunRoute(agentRuntime));
   app.route("/api/diagnose", createDiagnoseRoute(config, agentRuntime));
   app.route("/api/positions", createPositionsRoute(config));

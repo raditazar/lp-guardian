@@ -2,6 +2,17 @@ import { loadConfig, loadLocalEnv } from "../config.js";
 import { PortfolioService } from "../services/portfolio/portfolioService.js";
 import type { Address } from "viem";
 
+function actionName(value: 0 | 1 | 2): string {
+  switch (value) {
+    case 0:
+      return "hold";
+    case 1:
+      return "rebalance";
+    case 2:
+      return "close";
+  }
+}
+
 /**
  * Integration test script that uses real RPC to run the full diagnostic pipeline.
  * Usage: tsx src/scripts/integrationDiagnoseRpc.ts [tokenId]
@@ -32,8 +43,12 @@ async function main() {
       console.log(`Tx Hash: ${result.anchor.txHash}`);
     }
 
-    console.log("\n=== FINAL VERDICT ===");
-    console.log(result.report.payload.verdict.markdown);
+    console.log("\n=== PORTFOLIO RISK ===");
+    console.log(`Risk Score Bps: ${result.report.payload.riskOutput.riskScoreBps}`);
+    console.log(`Risk Tier: ${result.report.payload.riskOutput.riskTier}`);
+    console.log(
+      `Recommended Action: ${actionName(result.report.payload.riskOutput.recommendedAction)}`,
+    );
 
     console.log(`\n[integration] Pipeline completed successfully.`);
   } catch (err) {
