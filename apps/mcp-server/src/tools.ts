@@ -1,4 +1,9 @@
 import { backendJson, unwrapApiResponse } from "./backend.js";
+import {
+  accessDeniedResult,
+  accessSchemaProperties,
+  evaluateMcpAccess,
+} from "./access.js";
 import type { ToolDefinition, ToolResult } from "./types.js";
 
 type JsonObject = Record<string, unknown>;
@@ -54,6 +59,7 @@ const riskInputSourceSchema = {
 };
 
 const portfolioDiagnosisProperties = {
+  ...accessSchemaProperties(),
   walletAddress: addressSchema,
   tokenId: tokenIdSchema,
   subjectId: { type: "string", pattern: "^\\d+$" },
@@ -66,6 +72,18 @@ const portfolioDiagnosisProperties = {
     pattern: "^0x[a-fA-F0-9]{64}$",
   },
 };
+
+const protectedToolNames = new Set([
+  "portfolio_diagnose",
+  "portfolio_simulate",
+  "portfolio_optimize",
+  "portfolio_execute",
+  "portfolio_monitor",
+  "lp_guardian_get_wallet_positions",
+  "lp_guardian_validate_ownership",
+  "lp_guardian_diagnose_portfolio",
+  "lp_guardian_get_report",
+]);
 
 export const tools: ToolDefinition[] = [
   {
@@ -139,6 +157,7 @@ export const tools: ToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
+        ...accessSchemaProperties(),
         walletAddress: addressSchema,
       },
       required: ["walletAddress"],
@@ -188,6 +207,7 @@ function provenanceEnvelope(data: unknown, extras: JsonObject = {}): JsonObject 
     chainId: extras.chainId,
     mockUsed: false,
     degraded: Boolean(extras.degraded),
+    access: extras.access,
     warnings: extras.warnings ?? [],
     data,
   };
@@ -293,6 +313,21 @@ function executionDisabledResult(): ToolResult {
 
 export async function callTool(name: string, rawArgs: unknown): Promise<ToolResult> {
   const args = asObject(rawArgs);
+  const accessDecision = protectedToolNames.has(name)
+    ? evaluateMcpAccess(args)
+    : undefined;
+  if (accessDecision && !accessDecision.ok) {
+    return accessDeniedResult(accessDecision);
+  }
+  const accessExtras = accessDecision
+    ? {
+        access: {
+          mode: accessDecision.mode,
+          allowed: true,
+        },
+        warnings: accessDecision.warnings,
+      }
+    : {};
 
   switch (name) {
     case "lp_guardian_ping":
@@ -306,18 +341,22 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       });
 
     case "portfolio_diagnose":
-      return callAgentRun(args, "correlate");
+      return callAgentRun(args, "correlate", accessExtras);
 
     case "portfolio_simulate":
       return callAgentRun(args, "simulate", {
+        ...accessExtras,
         warnings: [
+          ...(accessDecision?.warnings ?? []),
           "Scenario labels are accepted by MCP for traceability; current backend scoring is deterministic from wallet/risk inputs.",
         ],
       });
 
     case "portfolio_optimize":
       return callAgentRun(args, "optimize", {
+        ...accessExtras,
         warnings: [
+          ...(accessDecision?.warnings ?? []),
           "Optimization currently returns the risk-engine suggested action; no transaction route is executed.",
         ],
       });
@@ -327,20 +366,22 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       if (!optionalBoolean(args, "dryRun", true)) return executionDisabledResult();
 
       return callAgentRun(args, "execute", {
+        ...accessExtras,
         degraded: true,
         warnings: [
+          ...(accessDecision?.warnings ?? []),
           "Execution preview only. No Permit2 signature, swap, mint, burn, or transaction submission was performed.",
         ],
       });
     }
 
     case "portfolio_monitor": {
-      return callAgentRun(args, "monitor");
+      return callAgentRun(args, "monitor", accessExtras);
     }
 
     case "lp_guardian_get_wallet_positions": {
       const walletAddress = requireString(args, "walletAddress");
-      return callBackendTool(`/api/portfolio/${walletAddress}/positions`);
+      return callBackendTool(`/api/portfolio/${walletAddress}/positions`, undefined, accessExtras);
     }
 
     case "lp_guardian_validate_ownership": {
@@ -349,15 +390,15 @@ export async function callTool(name: string, rawArgs: unknown): Promise<ToolResu
       return callBackendTool("/api/portfolio/validate-ownership", {
         method: "POST",
         body: JSON.stringify({ walletAddress, tokenId }),
-      });
+      }, accessExtras);
     }
 
     case "lp_guardian_diagnose_portfolio":
-      return callPortfolioDiagnose(args);
+      return callPortfolioDiagnose(args, accessExtras);
 
     case "lp_guardian_get_report": {
       const rootHash = requireString(args, "rootHash");
-      return callBackendTool(`/api/report/${rootHash}`);
+      return callBackendTool(`/api/report/${rootHash}`, undefined, accessExtras);
     }
 
     default:
