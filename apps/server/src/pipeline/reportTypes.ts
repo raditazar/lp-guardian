@@ -28,6 +28,22 @@ export interface AssembledReportPayload {
     ilT1: number;
     ilPct: number;
   };
+  swapReplay?: {
+    pool: string;
+    swapSource?: "subgraph" | "rpc" | "none";
+    swapCount: number;
+    swapsInRange: number;
+    feesUsd: number;
+    grossVolumeUsd: number;
+    fromBlock: string;
+    toBlock: string;
+    inputRoot: string;
+    resultHash: string;
+    replayId?: string;
+    anchorTxHash?: string;
+    anchorStub?: boolean;
+    label: string;
+  };
   regime?: { topLabel: string; confidence: number; narrative: string };
   hooks?: { pair: string; topFamily: string; candidateCount: number };
   migration?: {

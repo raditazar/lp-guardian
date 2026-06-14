@@ -5,6 +5,10 @@ import { useAccount } from "wagmi";
 import { AppHeader } from "../components/AppHeader.js";
 import { ILPanel, type ILBreakdown } from "../components/ILPanel.js";
 import {
+  SwapReplayPanel,
+  type SwapReplayOutput,
+} from "../components/SwapReplayPanel.js";
+import {
   HooksPanel,
   type HookDiscoveryResult,
 } from "../components/HooksPanel.js";
@@ -69,6 +73,7 @@ interface OwnershipValidationOutput {
 
 const PHASES = [
   { phase: 1, code: "position.resolve", label: "Resolve position" },
+  { phase: 2, code: "swap.replay",      label: "Replay swaps" },
   { phase: 3, code: "il.reconstruct",   label: "Compute IL" },
   { phase: 4, code: "regime.classify",  label: "Classify regime" },
   { phase: 5, code: "hooks.discover",   label: "Discover hooks" },
@@ -135,11 +140,13 @@ function compactHash(value: string): string {
 export function Diagnose() {
   const { tokenId } = useParams<{ tokenId: string }>();
   const [searchParams] = useSearchParams();
+  const protocol = searchParams.get("protocol") ?? undefined;
   const { address } = useAccount();
   const walletAddress = searchParams.get("walletAddress") ?? address;
   const { events, status, error } = useDiagnosticStream(
     tokenId ?? null,
     walletAddress,
+    protocol,
   );
 
   const toolEvents = events.filter(
@@ -155,6 +162,7 @@ export function Diagnose() {
 
   const resolved  = pickToolResult<ResolvedPositionOutput>(events, "getV3Position");
   const ownership = pickToolResult<OwnershipValidationOutput>(events, "validateOwnership");
+  const swapReplay = pickToolResult<SwapReplayOutput>(events, "replaySwaps");
   const ilBreakdown = pickToolResult<ILBreakdown>(events, "computeIL");
   const regime    = pickToolResult<RegimeClassification>(events, "classifyRegime");
   const hooks     = pickToolResult<HookDiscoveryResult>(events, "discoverV4Hooks");
@@ -188,7 +196,7 @@ export function Diagnose() {
 
   const completed  = PHASES.filter((p) => phaseState(events, p.phase) === "complete").length;
   const activePhase = PHASES.find((p) => phaseState(events, p.phase) === "active");
-  const hasEvidence = !!(ilBreakdown || regime || hooks || scoring || migration || provenance || verdict);
+  const hasEvidence = !!((swapReplay && !swapReplay.skipped) || ilBreakdown || regime || hooks || scoring || migration || provenance || verdict);
 
   const bubbleText = useMemo(() => {
     if (error) return "Stream dropped. Check the backend.";
@@ -298,6 +306,9 @@ export function Diagnose() {
                     : "Open a tokenId route to start a live diagnostic stream."
                 }
               />
+            )}
+            {swapReplay && !swapReplay.skipped && (
+              <SwapReplayPanel result={swapReplay} />
             )}
             {ilBreakdown && (
               <ILPanel breakdown={ilBreakdown} token1Symbol={token1Symbol} />

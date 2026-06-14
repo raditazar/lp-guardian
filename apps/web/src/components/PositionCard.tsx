@@ -50,6 +50,14 @@ function rangeFill(status: "healthy" | "drift" | "bleeding"): string {
   return "100%";
 }
 
+function diagnoseHref(position: V3PositionRaw): string {
+  const params = new URLSearchParams();
+  params.set("walletAddress", position.owner);
+  if (position.protocol) params.set("protocol", position.protocol);
+
+  return `/diagnose/${position.id}?${params.toString()}`;
+}
+
 export function PositionCard({ position }: Props) {
   const health = classifyHealth(position);
   const status = HEALTH_TO_STATUS[health];
@@ -66,7 +74,7 @@ export function PositionCard({ position }: Props) {
 
   return (
     <Link
-      to={`/diagnose/${position.id}?walletAddress=${encodeURIComponent(position.owner)}`}
+      to={diagnoseHref(position)}
       className="atlas-card"
       aria-label={`Diagnose ${pool.token0.symbol}/${pool.token1.symbol} position ${position.id}`}
     >

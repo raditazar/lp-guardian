@@ -107,6 +107,80 @@ export async function fetchCamelotPositions(
   return out;
 }
 
+/**
+ * Resolves a single Camelot (Algebra) position by tokenId directly from the
+ * Camelot PositionManager — no owner enumeration needed. Returns null when the
+ * tokenId isn't a live Camelot position (so the multi-protocol resolver can try
+ * the next protocol).
+ */
+export async function resolveCamelotByTokenId(
+  config: ServerConfig,
+  tokenId: string,
+): Promise<{ position: V3PositionRaw; owner: `0x${string}` } | null> {
+  const { arbitrum } = getChainClients(config);
+  const pm = ARBITRUM_ADDRESSES.camelotPositionManager as `0x${string}`;
+  const id = BigInt(tokenId);
+
+  const [posList, ownerRes] = await Promise.all([
+    readPositions(arbitrum, pm, [id]),
+    arbitrum
+      .readContract({
+        address: pm,
+        abi: algebraPositionManagerAbi,
+        functionName: "ownerOf",
+        args: [id],
+      })
+      .catch(() => null),
+  ]);
+  const p = posList[0];
+  if (!p || p.liquidity === 0n) return null;
+
+  const pools = await resolvePools(arbitrum, [p]);
+  const pool = pools.get(pairKey(p.token0, p.token1));
+  if (!pool || pool.address === ZERO) return null;
+
+  const tokenMeta = await readTokenMeta(arbitrum, unique([p.token0, p.token1]));
+  const t0 = tokenMeta.get(p.token0.toLowerCase());
+  const t1 = tokenMeta.get(p.token1.toLowerCase());
+  if (!t0 || !t1) return null;
+
+  const owner =
+    typeof ownerRes === "string"
+      ? getAddress(ownerRes)
+      : (ZERO as `0x${string}`);
+  const amounts = amountsForLiquidity(
+    p.liquidity,
+    pool.tick,
+    p.tickLower,
+    p.tickUpper,
+  );
+  const isInRange = pool.tick >= p.tickLower && pool.tick < p.tickUpper;
+
+  const position: V3PositionRaw = {
+    id: tokenId,
+    owner: owner.toLowerCase(),
+    liquidity: p.liquidity.toString(),
+    depositedToken0: toHuman(amounts.amount0Raw, t0.decimals).toString(),
+    depositedToken1: toHuman(amounts.amount1Raw, t1.decimals).toString(),
+    collectedFeesToken0: toHuman(p.tokensOwed0, t0.decimals).toString(),
+    collectedFeesToken1: toHuman(p.tokensOwed1, t1.decimals).toString(),
+    tickLower: { tickIdx: p.tickLower.toString() },
+    tickUpper: { tickIdx: p.tickUpper.toString() },
+    pool: {
+      id: pool.address.toLowerCase(),
+      feeTier: pool.fee.toString(),
+      tickSpacing: pool.tickSpacing.toString(),
+      tick: pool.tick.toString(),
+      token0: rawToken(p.token0, t0),
+      token1: rawToken(p.token1, t1),
+    },
+    protocol: "camelot" satisfies Protocol,
+    chainId: config.arbitrumChainId,
+    isInRange,
+  };
+  return { position, owner };
+}
+
 async function readTokenIds(
   client: PublicClient,
   pm: `0x${string}`,

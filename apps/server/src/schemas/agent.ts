@@ -46,6 +46,7 @@ export const diagnoseQuerySchema = z.object({
     .regex(/^0x[a-fA-F0-9]{40}$/, "walletAddress must be an EVM address")
     .default(DEFAULT_FOUNDATION_WALLET),
   scenario: foundationScenarioSchema.default("dust-and-correlation"),
+  protocol: z.enum(["uniswap-v3", "uniswap-v4", "camelot"]).optional(),
 });
 
 export type DiagnoseQuery = z.infer<typeof diagnoseQuerySchema>;
