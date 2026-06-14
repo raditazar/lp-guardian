@@ -14,6 +14,7 @@ const orchestrationRunSchema = z.object({
     .regex(/^0x[a-fA-F0-9]{40}$/, "walletAddress must be an EVM address"),
   tokenId: z.string().regex(/^\d+$/, "tokenId must be an unsigned integer string").optional(),
   scenario: z.string().optional(),
+  idempotencyKey: z.string().min(1).max(160).optional(),
   targetAgent: z
     .enum(["scan", "correlate", "simulate", "optimize", "execute", "monitor"])
     .default("correlate"),
@@ -97,6 +98,39 @@ export function createAgentOrchestrationRoute(
     }));
   });
 
+  route.get("/dead-letter", (c) => {
+    const walletAddress = c.req.query("walletAddress");
+    const targetAgent = c.req.query("targetAgent");
+    const limit = c.req.query("limit");
+
+    const parsedWallet = walletAddress
+      ? z.string().regex(/^0x[a-fA-F0-9]{40}$/).safeParse(walletAddress)
+      : undefined;
+    if (parsedWallet && !parsedWallet.success) {
+      return c.json(fail("BAD_REQUEST", "walletAddress must be an EVM address."), 400);
+    }
+
+    const parsedAgent = targetAgent
+      ? z.enum(["scan", "correlate", "simulate", "optimize", "execute", "monitor"]).safeParse(targetAgent)
+      : undefined;
+    if (parsedAgent && !parsedAgent.success) {
+      return c.json(fail("BAD_REQUEST", "targetAgent is invalid."), 400);
+    }
+
+    const parsedLimit = limit ? Number(limit) : 50;
+    if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+      return c.json(fail("BAD_REQUEST", "limit must be an integer from 1 to 500."), 400);
+    }
+
+    return c.json(ok({
+      runs: orchestrator.listDeadLetters({
+        walletAddress: parsedWallet?.success ? parsedWallet.data as Address : undefined,
+        targetAgent: parsedAgent?.success ? parsedAgent.data as AgentType : undefined,
+        limit: parsedLimit,
+      }),
+    }));
+  });
+
   route.post("/runs", async (c) => {
     const body = await c.req.json().catch(() => undefined);
     const parsed = orchestrationRunSchema.safeParse(body);
@@ -143,6 +177,18 @@ export function createAgentOrchestrationRoute(
     return c.json(ok(run));
   });
 
+  route.post("/run/:runId/retry", (c) => {
+    const result = orchestrator.retryDeadLetter(c.req.param("runId"));
+    if (!result) {
+      return c.json(
+        fail("RUN_NOT_RETRYABLE", "Run was not found or is not dead-lettered."),
+        409,
+      );
+    }
+
+    return c.json(ok(result), 202);
+  });
+
   route.get("/messages/:correlationId", (c) => {
     return c.json(ok({
       correlationId: c.req.param("correlationId"),
@@ -177,7 +223,8 @@ export function createAgentOrchestrationRoute(
           send(event.event, event.data, event.id);
           if (
             event.event === "agent.run.completed" ||
-            event.event === "agent.run.failed"
+            event.event === "agent.run.failed" ||
+            event.event === "agent.run.dead_lettered"
           ) {
             send("stream.complete", { correlationId });
             unsubscribe?.();

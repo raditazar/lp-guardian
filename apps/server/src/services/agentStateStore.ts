@@ -80,6 +80,16 @@ export class AgentStateStore {
     return this.state.runs.find((entry) => entry.run.id === runId);
   }
 
+  getRunByIdempotencyKey(idempotencyKey: string): StoredAgentRun | undefined {
+    return this.state.runs.find(
+      (entry) => entry.meta?.idempotencyKey === idempotencyKey,
+    );
+  }
+
+  listDeadLetters(filter: ListRunsFilter = {}): StoredAgentRun[] {
+    return this.listRuns(filter).filter((entry) => entry.meta?.deadLetter);
+  }
+
   getMessages(correlationId: string): AgentMessage[] {
     return (
       this.state.runs.find(

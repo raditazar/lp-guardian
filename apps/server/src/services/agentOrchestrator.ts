@@ -32,6 +32,7 @@ export interface AgentOrchestrationInput {
   tokenId?: string;
   scenario?: FoundationRunRequest["scenario"] | string;
   targetAgent?: AgentType;
+  idempotencyKey?: string;
   dryRun?: boolean;
   userApproved?: boolean;
   publishReport?: boolean;
@@ -46,6 +47,14 @@ export interface AgentOrchestrationResult {
 
 export interface StoredAgentRun extends AgentOrchestrationResult {
   input: AgentOrchestrationInput;
+  meta?: {
+    idempotencyKey?: string;
+    attempts: number;
+    maxAttempts: number;
+    nextAttemptAt?: number;
+    lastError?: string;
+    deadLetter?: boolean;
+  };
 }
 
 export interface AgentStreamEvent {
@@ -56,6 +65,10 @@ export interface AgentStreamEvent {
 
 type AgentStreamListener = (event: AgentStreamEvent) => void;
 
+const DEFAULT_MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1_000;
+const RETRY_MAX_DELAY_MS = 30_000;
+
 interface AgentContext {
   input: AgentOrchestrationInput;
   correlationId: string;
@@ -65,6 +78,27 @@ interface AgentContext {
 
 function createId(prefix: string): string {
   return `${prefix}__${Date.now()}__${Math.random().toString(16).slice(2)}`;
+}
+
+function idempotencyKeyFor(input: AgentOrchestrationInput): string {
+  return input.idempotencyKey ?? [
+    input.walletAddress.toLowerCase(),
+    input.targetAgent ?? "correlate",
+    input.tokenId ?? "",
+    input.scenario ?? "",
+    input.dryRun === false ? "execute" : "dry-run",
+  ].join(":");
+}
+
+function retryDelayMs(attempts: number): number {
+  return Math.min(
+    RETRY_BASE_DELAY_MS * (2 ** Math.max(0, attempts - 1)),
+    RETRY_MAX_DELAY_MS,
+  );
+}
+
+function isTerminalStatus(status: AgentRunStatus): boolean {
+  return ["waiting_for_user", "completed", "failed", "cancelled"].includes(status);
 }
 
 function topicForAgent(agent: AgentType): AgentTopic {
@@ -311,6 +345,10 @@ export class AgentOrchestrator {
     return this.stateStore.listRuns(filter);
   }
 
+  listDeadLetters(filter: ListRunsFilter = {}): StoredAgentRun[] {
+    return this.stateStore.listDeadLetters(filter);
+  }
+
   getRun(runId: string): StoredAgentRun | undefined {
     return this.runs.get(runId) ?? this.stateStore.getRun(runId);
   }
@@ -319,6 +357,35 @@ export class AgentOrchestrator {
     return this.listRuns().find(
       (entry) => entry.run.correlationId === correlationId,
     );
+  }
+
+  retryDeadLetter(runId: string): AgentOrchestrationResult | undefined {
+    const storedRun = this.getRun(runId);
+    if (!storedRun?.meta?.deadLetter) return undefined;
+
+    storedRun.messages = [];
+    storedRun.run = {
+      ...storedRun.run,
+      status: "queued",
+      completedAt: undefined,
+      error: undefined,
+    };
+    storedRun.meta = {
+      ...storedRun.meta,
+      attempts: 0,
+      nextAttemptAt: undefined,
+      lastError: undefined,
+      deadLetter: false,
+    };
+    this.persistRun(storedRun);
+    this.queue.push(storedRun.run.id);
+    this.emitRun(storedRun, "agent.run.queued");
+    this.processQueue();
+
+    return {
+      run: storedRun.run,
+      messages: storedRun.messages,
+    };
   }
 
   getMessages(correlationId: string): AgentMessage[] {
@@ -345,6 +412,15 @@ export class AgentOrchestrator {
   }
 
   enqueue(input: AgentOrchestrationInput): AgentOrchestrationResult {
+    const idempotencyKey = idempotencyKeyFor(input);
+    const existing = this.stateStore.getRunByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      return {
+        run: existing.run,
+        messages: existing.messages,
+      };
+    }
+
     const startedAt = Date.now();
     const targetAgent = input.targetAgent ?? "correlate";
     const run: AgentRun = {
@@ -358,6 +434,11 @@ export class AgentOrchestrator {
       input,
       run,
       messages: [],
+      meta: {
+        idempotencyKey,
+        attempts: 0,
+        maxAttempts: DEFAULT_MAX_ATTEMPTS,
+      },
     };
 
     this.persistRun(storedRun);
@@ -383,6 +464,11 @@ export class AgentOrchestrator {
         startedAt,
         currentAgent: targetAgent,
         correlationId: createId("correlation"),
+      },
+      meta: {
+        idempotencyKey: idempotencyKeyFor(input),
+        attempts: 0,
+        maxAttempts: 1,
       },
     };
 
@@ -412,6 +498,15 @@ export class AgentOrchestrator {
 
         const storedRun = this.getRun(runId);
         if (!storedRun || storedRun.run.status !== "queued") continue;
+        if (
+          storedRun.meta?.nextAttemptAt &&
+          storedRun.meta.nextAttemptAt > Date.now()
+        ) {
+          this.queue.push(runId);
+          const delay = storedRun.meta.nextAttemptAt - Date.now();
+          setTimeout(() => this.processQueue(), delay);
+          break;
+        }
 
         storedRun.run = {
           ...storedRun.run,
@@ -436,6 +531,12 @@ export class AgentOrchestrator {
     };
     let currentAgent = storedRun.run.currentAgent;
     let status: AgentRunStatus = "completed";
+    storedRun.meta = {
+      idempotencyKey: storedRun.meta?.idempotencyKey ?? idempotencyKeyFor(storedRun.input),
+      attempts: (storedRun.meta?.attempts ?? 0) + 1,
+      maxAttempts: storedRun.meta?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+    };
+    this.persistRun(storedRun);
 
     try {
       for (const agentType of sequenceFor(targetAgent)) {
@@ -469,6 +570,7 @@ export class AgentOrchestrator {
       }
     } catch (error) {
       status = "failed";
+      const message = error instanceof Error ? error.message : String(error);
       this.appendMessage(storedRun, {
         id: createId("msg"),
         timestamp: Date.now(),
@@ -477,12 +579,53 @@ export class AgentOrchestrator {
         topic: "agent.failed",
         correlationId: storedRun.run.correlationId,
         payload: {
-          message: error instanceof Error ? error.message : String(error),
+          message,
           retryable: true,
+          attempt: storedRun.meta.attempts,
+          maxAttempts: storedRun.meta.maxAttempts,
         },
       });
+      storedRun.meta = {
+        ...storedRun.meta,
+        lastError: message,
+      };
     }
 
+    if (
+      status === "failed" &&
+      storedRun.meta &&
+      storedRun.meta.attempts < storedRun.meta.maxAttempts
+    ) {
+      const nextAttemptAt = Date.now() + retryDelayMs(storedRun.meta.attempts);
+      storedRun.meta = {
+        ...storedRun.meta,
+        nextAttemptAt,
+        deadLetter: false,
+      };
+      storedRun.run = {
+        ...storedRun.run,
+        status: "queued",
+        completedAt: undefined,
+        error: undefined,
+      };
+      this.persistRun(storedRun);
+      this.queue.push(storedRun.run.id);
+      this.emit(storedRun.run.correlationId, {
+        event: "agent.run.retry_scheduled",
+        id: storedRun.run.id,
+        data: {
+          runId: storedRun.run.id,
+          correlationId: storedRun.run.correlationId,
+          attempt: storedRun.meta.attempts,
+          maxAttempts: storedRun.meta.maxAttempts,
+          nextAttemptAt,
+        },
+      });
+      setTimeout(() => this.processQueue(), Math.max(0, nextAttemptAt - Date.now()));
+      return;
+    }
+
+    const deadLetter = status === "failed";
     storedRun.run = {
       ...storedRun.run,
       status,
@@ -498,10 +641,19 @@ export class AgentOrchestrator {
             }
           : undefined,
     };
+    storedRun.meta = storedRun.meta
+      ? {
+          ...storedRun.meta,
+          nextAttemptAt: undefined,
+          deadLetter,
+        }
+      : undefined;
     this.persistRun(storedRun);
     this.emitRun(
       storedRun,
-      status === "failed" ? "agent.run.failed" : "agent.run.completed",
+      status === "failed"
+        ? "agent.run.dead_lettered"
+        : "agent.run.completed",
     );
   }
 
