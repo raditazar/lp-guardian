@@ -27,6 +27,17 @@ export interface ListRunsFilter {
   limit?: number;
 }
 
+export interface AgentStateRepository {
+  listRuns(filter?: ListRunsFilter): StoredAgentRun[];
+  getRun(runId: string): StoredAgentRun | undefined;
+  getRunByIdempotencyKey(idempotencyKey: string): StoredAgentRun | undefined;
+  listDeadLetters(filter?: ListRunsFilter): StoredAgentRun[];
+  getMessages(correlationId: string): AgentMessage[];
+  putRun(run: StoredAgentRun): void;
+  getMonitor(): PersistedMonitorState;
+  putMonitor(monitor: PersistedMonitorState): void;
+}
+
 const DEFAULT_STATE_FILE = join(
   process.cwd(),
   ".lp-guardian",
@@ -49,7 +60,7 @@ function stateFilePath(): string {
   return process.env.LPGUARDIAN_AGENT_STATE_FILE ?? DEFAULT_STATE_FILE;
 }
 
-export class AgentStateStore {
+export class AgentStateStore implements AgentStateRepository {
   private state: PersistedAgentState;
 
   constructor(private readonly filePath = stateFilePath()) {

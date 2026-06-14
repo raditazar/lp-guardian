@@ -1,6 +1,9 @@
 import type { Address } from "viem";
 import type { ServerConfig } from "../../config.js";
-import { AgentStateStore } from "../agentStateStore.js";
+import {
+  AgentStateStore,
+  type AgentStateRepository,
+} from "../agentStateStore.js";
 import { runFoundationAgents } from "../agentOrchestrator.js";
 import { PortfolioService } from "./portfolioService.js";
 import type { WalletRiskInputResult } from "./walletRiskInput.js";
@@ -134,7 +137,7 @@ export class MonitorService {
 
   constructor(
     private readonly config: ServerConfig,
-    private readonly stateStore = new AgentStateStore(),
+    private readonly stateStore: AgentStateRepository = new AgentStateStore(),
   ) {
     this.portfolioService = new PortfolioService(config);
 

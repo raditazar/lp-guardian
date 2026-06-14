@@ -14,11 +14,16 @@ import { createPositionsRoute } from "./routes/positions.js";
 import { createReportRoute } from "./routes/report.js";
 import { createPortfolioRoute } from "./routes/portfolio.js";
 import { AgentOrchestrator } from "./services/agentOrchestrator.js";
-import { AgentStateStore } from "./services/agentStateStore.js";
+import {
+  AgentStateStore,
+  type AgentStateRepository,
+} from "./services/agentStateStore.js";
+import type { AgentRunQueue } from "./services/agentRunQueue.js";
 import { MonitorService } from "./services/portfolio/monitorService.js";
 
 export interface AppServices {
-  agentStateStore?: AgentStateStore;
+  agentStateStore?: AgentStateRepository;
+  agentRunQueue?: AgentRunQueue;
   monitorService?: MonitorService;
   agentOrchestrator?: AgentOrchestrator;
 }
@@ -31,7 +36,12 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
     services.monitorService ?? new MonitorService(config, agentStateStore);
   const agentOrchestrator =
     services.agentOrchestrator ??
-    new AgentOrchestrator(config, monitorService, agentStateStore);
+    new AgentOrchestrator(
+      config,
+      monitorService,
+      agentStateStore,
+      services.agentRunQueue,
+    );
 
   app.use("*", requestContext());
   app.use("*", requestLogger());

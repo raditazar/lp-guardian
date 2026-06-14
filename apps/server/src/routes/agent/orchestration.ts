@@ -143,6 +143,10 @@ export function createAgentOrchestrationRoute(
     }));
   });
 
+  route.get("/queue", (c) => {
+    return c.json(ok(orchestrator.getQueueSnapshot()));
+  });
+
   route.get("/dead-letter", (c) => {
     const filter = parseDeadLetterFilters(c);
     if (filter.error) return filter.error;

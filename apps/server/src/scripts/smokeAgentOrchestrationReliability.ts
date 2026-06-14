@@ -109,6 +109,13 @@ assert.equal(runsResponse.status, 200);
 const runsBody = await json(runsResponse);
 assert.equal(runsBody.data.runs.length >= 1, true);
 
+const queueResponse = await app.request("/agent/orchestration/queue");
+assert.equal(queueResponse.status, 200);
+const queueBody = await json(queueResponse);
+assert.equal(queueBody.data.provider, "in-memory");
+assert.equal(typeof queueBody.data.pendingCount, "number");
+assert.equal(typeof queueBody.data.processing, "boolean");
+
 const deadLetterResponse = await app.request("/agent/orchestration/dead-letter");
 assert.equal(deadLetterResponse.status, 200);
 const deadLetterBody = await json(deadLetterResponse);
@@ -128,6 +135,7 @@ console.log(JSON.stringify({
     idempotentEnqueue: true,
     completedRunLookup: true,
     orchestrationStreamReplay: true,
+    queueSnapshot: true,
     deadLetterList: true,
     deadLetterStream: true,
   },

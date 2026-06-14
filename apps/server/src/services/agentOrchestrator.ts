@@ -8,7 +8,16 @@ import type {
 import type { Address, Hex } from "viem";
 import type { ServerConfig } from "../config.js";
 import type { FoundationRunRequest } from "../schemas/agent.js";
-import { AgentStateStore, type ListRunsFilter } from "./agentStateStore.js";
+import {
+  AgentStateStore,
+  type AgentStateRepository,
+  type ListRunsFilter,
+} from "./agentStateStore.js";
+import {
+  InMemoryAgentRunQueue,
+  type AgentRunQueue,
+  type AgentRunQueueSnapshot,
+} from "./agentRunQueue.js";
 import { MonitorService } from "./portfolio/monitorService.js";
 import { PortfolioService } from "./portfolio/portfolioService.js";
 import type { WalletRiskInputResult } from "./portfolio/walletRiskInput.js";
@@ -303,7 +312,6 @@ export class AgentOrchestrator {
   private readonly agents: Record<AgentType, PortfolioAgent>;
   private readonly runs = new Map<string, StoredAgentRun>();
   private readonly messagesByCorrelationId = new Map<string, AgentMessage[]>();
-  private readonly queue: string[] = [];
   private readonly streamListeners = new Map<string, Set<AgentStreamListener>>();
   private readonly deadLetterListeners = new Set<AgentStreamListener>();
   private processing = false;
@@ -311,7 +319,8 @@ export class AgentOrchestrator {
   constructor(
     config: ServerConfig,
     private readonly monitorService: MonitorService,
-    private readonly stateStore = new AgentStateStore(),
+    private readonly stateStore: AgentStateRepository = new AgentStateStore(),
+    private readonly queue: AgentRunQueue = new InMemoryAgentRunQueue(),
   ) {
     this.portfolioService = new PortfolioService(config);
     this.agents = {
@@ -330,7 +339,7 @@ export class AgentOrchestrator {
           status: "queued",
           completedAt: undefined,
         };
-        this.queue.push(storedRun.run.id);
+        this.queue.enqueue(storedRun.run.id);
         this.stateStore.putRun(storedRun);
       }
       this.runs.set(storedRun.run.id, storedRun);
@@ -348,6 +357,10 @@ export class AgentOrchestrator {
 
   listDeadLetters(filter: ListRunsFilter = {}): StoredAgentRun[] {
     return this.stateStore.listDeadLetters(filter);
+  }
+
+  getQueueSnapshot(): AgentRunQueueSnapshot {
+    return this.queue.snapshot(this.processing);
   }
 
   getRun(runId: string): StoredAgentRun | undefined {
@@ -379,7 +392,7 @@ export class AgentOrchestrator {
       deadLetter: false,
     };
     this.persistRun(storedRun);
-    this.queue.push(storedRun.run.id);
+    this.queue.enqueue(storedRun.run.id);
     this.emitRun(storedRun, "agent.run.queued");
     this.processQueue();
 
@@ -450,7 +463,7 @@ export class AgentOrchestrator {
     };
 
     this.persistRun(storedRun);
-    this.queue.push(run.id);
+    this.queue.enqueue(run.id);
     this.emitRun(storedRun, "agent.run.queued");
     this.processQueue();
 
@@ -500,8 +513,8 @@ export class AgentOrchestrator {
 
   private async drainQueue(): Promise<void> {
     try {
-      while (this.queue.length > 0) {
-        const runId = this.queue.shift();
+      while (this.queue.size() > 0) {
+        const runId = this.queue.dequeue();
         if (!runId) continue;
 
         const storedRun = this.getRun(runId);
@@ -510,7 +523,7 @@ export class AgentOrchestrator {
           storedRun.meta?.nextAttemptAt &&
           storedRun.meta.nextAttemptAt > Date.now()
         ) {
-          this.queue.push(runId);
+          this.queue.enqueue(runId);
           const delay = storedRun.meta.nextAttemptAt - Date.now();
           setTimeout(() => this.processQueue(), delay);
           break;
@@ -527,7 +540,7 @@ export class AgentOrchestrator {
       }
     } finally {
       this.processing = false;
-      if (this.queue.length > 0) this.processQueue();
+      if (this.queue.size() > 0) this.processQueue();
     }
   }
 
@@ -617,7 +630,7 @@ export class AgentOrchestrator {
         error: undefined,
       };
       this.persistRun(storedRun);
-      this.queue.push(storedRun.run.id);
+      this.queue.enqueue(storedRun.run.id);
       this.emit(storedRun.run.correlationId, {
         event: "agent.run.retry_scheduled",
         id: storedRun.run.id,
