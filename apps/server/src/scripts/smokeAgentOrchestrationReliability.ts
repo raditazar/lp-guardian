@@ -100,6 +100,30 @@ const messagesResponse = await app.request(
 assert.equal(messagesResponse.status, 200);
 const messagesBody = await json(messagesResponse);
 assert.equal(messagesBody.data.messages.length > 0, true);
+assert.equal(
+  messagesBody.data.messages[0].payload.agentProvenance.tee.label,
+  "EMULATED",
+);
+assert.equal(messagesBody.data.messages[0].teeAttestation, undefined);
+
+const verifiedAttestationHash = `0x${"1".repeat(64)}`;
+const verifiedRunResponse = await app.request("/agent/orchestration/run", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({
+    walletAddress,
+    targetAgent: "monitor",
+    idempotencyKey: `verified-provenance-${idempotencyKey}`,
+    phalaAttestationHash: verifiedAttestationHash,
+  }),
+});
+assert.equal(verifiedRunResponse.status, 200);
+const verifiedRunBody = await json(verifiedRunResponse);
+assert.equal(
+  verifiedRunBody.data.messages[0].payload.agentProvenance.tee.label,
+  "VERIFIED",
+);
+assert.equal(verifiedRunBody.data.messages[0].teeAttestation, verifiedAttestationHash);
 
 const runStream = await app.request(
   `/agent/orchestration/stream/${storedRun.run.correlationId}`,
@@ -202,6 +226,7 @@ console.log(JSON.stringify({
     monitorWalletStream: true,
     idempotentEnqueue: true,
     stepProgress: true,
+    messageProvenance: true,
     completedRunLookup: true,
     orchestrationStreamReplay: true,
     queueSnapshot: true,

@@ -101,6 +101,17 @@ interface AgentContext {
   diagnosis?: AggregateRiskPipelineResult;
 }
 
+interface AgentMessageProvenance {
+  agent: AgentType;
+  tee: {
+    label: "VERIFIED" | "EMULATED";
+    provider: "phala" | "unavailable";
+    attestationHash?: Hex;
+    verifier?: string;
+    warnings: string[];
+  };
+}
+
 function createId(prefix: string): string {
   return `${prefix}__${Date.now()}__${Math.random().toString(16).slice(2)}`;
 }
@@ -174,6 +185,61 @@ function riskInputFromWire(value: unknown): PortfolioRiskInput | undefined {
     dustPositions,
     correlatedExposureBps,
     concentrationBps,
+  };
+}
+
+function nonZeroHash(value: unknown): Hex | undefined {
+  if (
+    typeof value === "string" &&
+    /^0x[a-fA-F0-9]{64}$/.test(value) &&
+    !/^0x0{64}$/i.test(value)
+  ) {
+    return value as Hex;
+  }
+
+  return undefined;
+}
+
+function messageProvenance(
+  context: AgentContext,
+  agentType: AgentType,
+  payload: unknown,
+): {
+  payload: unknown;
+  teeAttestation?: Hex;
+} {
+  const payloadObject = isRecord(payload) ? payload : undefined;
+  const attestationHash =
+    nonZeroHash(context.input.phalaAttestationHash) ??
+    nonZeroHash(payloadObject?.attestationHash);
+  const verified = Boolean(attestationHash);
+  const provenance: AgentMessageProvenance = {
+    agent: agentType,
+    tee: {
+      label: verified ? "VERIFIED" : "EMULATED",
+      provider: verified ? "phala" : "unavailable",
+      attestationHash,
+      warnings: verified
+        ? []
+        : [
+            "No verified TEE attestation hash was supplied for this agent message.",
+          ],
+    },
+  };
+
+  const nextPayload = payloadObject
+    ? {
+        ...payloadObject,
+        agentProvenance: provenance,
+      }
+    : {
+        value: payload,
+        agentProvenance: provenance,
+      };
+
+  return {
+    payload: nextPayload,
+    teeAttestation: attestationHash,
   };
 }
 
@@ -913,6 +979,7 @@ export class AgentOrchestrator {
 
       try {
         const payload = await this.agents[agentType].run(context);
+        const provenanced = messageProvenance(context, agentType, payload);
         const message: AgentMessage = {
           id: createId("msg"),
           timestamp: Date.now(),
@@ -920,7 +987,8 @@ export class AgentOrchestrator {
           target: "all",
           topic: topicForAgent(agentType),
           correlationId: storedRun.run.correlationId,
-          payload: normalizeForWire(payload),
+          payload: normalizeForWire(provenanced.payload),
+          teeAttestation: provenanced.teeAttestation,
         };
         step.status = "completed";
         step.completedAt = Date.now();
