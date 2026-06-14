@@ -1,14 +1,19 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
 import { loadConfig, loadLocalEnv } from "./config.js";
+import { AgentStateStore } from "./services/agentStateStore.js";
 import { MonitorService } from "./services/portfolio/monitorService.js";
 
 loadLocalEnv();
 const config = loadConfig();
-const app = createApp(config);
 
 // Start autonomous background monitoring
-const monitor = new MonitorService(config);
+const agentStateStore = new AgentStateStore();
+const monitor = new MonitorService(config, agentStateStore);
+const app = createApp(config, {
+  agentStateStore,
+  monitorService: monitor,
+});
 monitor.start();
 
 serve(
