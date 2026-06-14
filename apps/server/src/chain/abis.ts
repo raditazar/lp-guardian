@@ -77,6 +77,13 @@ export const algebraPositionManagerAbi = [
   },
   {
     type: "function",
+    name: "ownerOf",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
     name: "tokenOfOwnerByIndex",
     stateMutability: "view",
     inputs: [
@@ -288,10 +295,128 @@ export const portfolioRiskEngineAbi = [
   },
 ] as const;
 
+// SwapReplayVerifier (Stylus) — anchors off-chain swap-replay proofs on
+// Robinhood Chain. publishReplay is the write; computeFee mirrors the on-chain
+// per-swap fee primitive so any single replayed swap stays reproducible.
+export const swapReplayVerifierAbi = [
+  {
+    type: "function",
+    name: "publishReplay",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "portfolio_owner", type: "address" },
+      { name: "subject_id", type: "uint256" },
+      { name: "pool", type: "address" },
+      { name: "from_block", type: "uint64" },
+      { name: "to_block", type: "uint64" },
+      { name: "swap_count", type: "uint32" },
+      { name: "input_root", type: "bytes32" },
+      { name: "result_hash", type: "bytes32" },
+      { name: "attestation_hash", type: "bytes32" },
+      { name: "tee_image_hash", type: "bytes32" },
+    ],
+    outputs: [{ type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "getReplay",
+    stateMutability: "view",
+    inputs: [{ name: "replay_id", type: "bytes32" }],
+    outputs: [
+      { type: "address" }, // publisher
+      { type: "uint256" }, // timestamp
+      { type: "address" }, // portfolio_owner
+      { type: "uint256" }, // subject_id
+      { type: "address" }, // pool
+      { type: "uint256" }, // from_block
+      { type: "uint256" }, // to_block
+      { type: "uint256" }, // swap_count
+      { type: "bytes32" }, // input_root
+      { type: "bytes32" }, // result_hash
+      { type: "bytes32" }, // attestation_hash
+      { type: "bytes32" }, // tee_image_hash
+    ],
+  },
+  {
+    type: "function",
+    name: "replayCount",
+    stateMutability: "view",
+    inputs: [{ name: "subject_id", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "replayAt",
+    stateMutability: "view",
+    inputs: [
+      { name: "subject_id", type: "uint256" },
+      { name: "index", type: "uint256" },
+    ],
+    outputs: [{ type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "computeReplayId",
+    stateMutability: "view",
+    inputs: [
+      { name: "portfolio_owner", type: "address" },
+      { name: "subject_id", type: "uint256" },
+      { name: "pool", type: "address" },
+      { name: "from_block", type: "uint64" },
+      { name: "to_block", type: "uint64" },
+      { name: "swap_count", type: "uint32" },
+      { name: "input_root", type: "bytes32" },
+      { name: "result_hash", type: "bytes32" },
+      { name: "attestation_hash", type: "bytes32" },
+      { name: "tee_image_hash", type: "bytes32" },
+    ],
+    outputs: [{ type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "computeFee",
+    stateMutability: "view",
+    inputs: [
+      { name: "amount_in", type: "uint256" },
+      { name: "fee_pips", type: "uint32" },
+    ],
+    outputs: [
+      { type: "uint256" }, // amount_after_fee
+      { type: "uint256" }, // fee_amount
+    ],
+  },
+] as const;
+
+// Uniswap V3 / Algebra pool Swap event — read from Arbitrum logs to source the
+// real swaps fed into the off-chain replay. Algebra emits the same topic shape
+// (the 5th field is `price` not `sqrtPriceX96`, but decoding is identical).
+export const univ3SwapEventAbi = [
+  {
+    type: "event",
+    name: "Swap",
+    inputs: [
+      { name: "sender", type: "address", indexed: true },
+      { name: "recipient", type: "address", indexed: true },
+      { name: "amount0", type: "int256", indexed: false },
+      { name: "amount1", type: "int256", indexed: false },
+      { name: "sqrtPriceX96", type: "uint160", indexed: false },
+      { name: "liquidity", type: "uint128", indexed: false },
+      { name: "tick", type: "int24", indexed: false },
+    ],
+  },
+] as const;
+
 // Uniswap V4 PositionManager (posm) — Arbitrum One. Position state is split:
 // the posm holds the NFT + poolKey/range, the singleton PoolManager holds
 // liquidity/slot0 (read via StateView).
 export const v4PositionManagerAbi = [
+  {
+    type: "function",
+    name: "ownerOf",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
   {
     type: "function",
     name: "getPositionLiquidity",

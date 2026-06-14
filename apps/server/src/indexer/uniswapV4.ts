@@ -133,6 +133,76 @@ export async function fetchUniswapV4Positions(
   return out;
 }
 
+/**
+ * Resolves a single Uniswap V4 position by tokenId directly from the
+ * PositionManager + StateView — no subgraph needed (we already have the
+ * tokenId). Returns null when it isn't a live V4 position.
+ */
+export async function resolveV4ByTokenId(
+  config: ServerConfig,
+  tokenId: string,
+): Promise<{ position: V3PositionRaw; owner: `0x${string}` } | null> {
+  const { arbitrum } = getChainClients(config);
+  const posm = ARBITRUM_ADDRESSES.v4PositionManager as `0x${string}`;
+  const id = BigInt(tokenId);
+
+  const active = await readActivePositions(arbitrum, posm, [id]);
+  const p = active[0];
+  if (!p) return null;
+
+  const tickByPool = await readPoolTicks(arbitrum, [p]);
+  const tick = tickByPool.get(p.poolId);
+  if (tick === undefined) return null;
+
+  const ownerRes = await arbitrum
+    .readContract({
+      address: posm,
+      abi: v4PositionManagerAbi,
+      functionName: "ownerOf",
+      args: [id],
+    })
+    .catch(() => null);
+  const owner =
+    typeof ownerRes === "string"
+      ? getAddress(ownerRes)
+      : (ZERO as `0x${string}`);
+
+  const tokenMeta = await readTokenMeta(
+    arbitrum,
+    unique([p.poolKey.currency0, p.poolKey.currency1]).filter(
+      (a) => a.toLowerCase() !== ZERO,
+    ),
+  );
+  const t0 = tokenInfo(p.poolKey.currency0, tokenMeta);
+  const t1 = tokenInfo(p.poolKey.currency1, tokenMeta);
+  const amounts = amountsForLiquidity(p.liquidity, tick, p.tickLower, p.tickUpper);
+  const isInRange = tick >= p.tickLower && tick < p.tickUpper;
+
+  const position: V3PositionRaw = {
+    id: tokenId,
+    owner: owner.toLowerCase(),
+    liquidity: p.liquidity.toString(),
+    depositedToken0: toHuman(amounts.amount0Raw, t0.decimals).toString(),
+    depositedToken1: toHuman(amounts.amount1Raw, t1.decimals).toString(),
+    collectedFeesToken0: "0",
+    collectedFeesToken1: "0",
+    tickLower: { tickIdx: p.tickLower.toString() },
+    tickUpper: { tickIdx: p.tickUpper.toString() },
+    pool: {
+      id: p.poolId.toLowerCase(),
+      feeTier: p.poolKey.fee.toString(),
+      tickSpacing: p.poolKey.tickSpacing.toString(),
+      tick: tick.toString(),
+      token0: rawToken(t0),
+      token1: rawToken(t1),
+    },
+    protocol: "uniswap-v4" satisfies Protocol,
+    chainId: config.arbitrumChainId,
+    isInRange,
+  };
+  return { position, owner };
+}
+
 async function readActivePositions(
   client: PublicClient,
   posm: `0x${string}`,

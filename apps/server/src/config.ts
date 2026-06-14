@@ -29,7 +29,9 @@ export interface ServerConfig {
 
   // --- Data sources ---
   theGraphKey: string | null;
+  uniswapV3SubgraphId: string | null;
   uniswapV4SubgraphId: string | null;
+  camelotSubgraphId: string | null;
   coinGeckoApiKey: string | null;
 
   // --- ElizaOS model provider ---
@@ -39,6 +41,7 @@ export interface ServerConfig {
   // --- Deployed Stylus contracts (Robinhood Chain) ---
   reportRegistryAddress: `0x${string}`;
   riskEngineAddress: `0x${string}`;
+  swapReplayVerifierAddress: `0x${string}`;
   /** Same addresses under the names used by the robinhood/* services. */
   lpGuardianReportsContract?: string;
   lpGuardianRiskEngineContract?: string;
@@ -55,6 +58,10 @@ export interface ServerConfig {
 
   // --- Pipeline tuning ---
   dustThresholdUsd: number;
+  /** How many Arbitrum blocks back to scan for the swap replay window. */
+  swapReplayBlockWindow: number;
+  /** Hard cap on replayed swaps (contract rejects >1000). */
+  swapReplayMaxSwaps: number;
 }
 
 /** Walks up from `startDir` to the nearest .env and loads it into process.env
@@ -121,6 +128,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     env.PortfolioRiskEngine ?? env.LPGUARDIAN_RISK_ENGINE_CONTRACT,
     "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0",
   );
+  const swapReplayVerifier = address(
+    env.SwapReplayVerifier ?? env.LPGUARDIAN_SWAP_REPLAY_CONTRACT,
+    "0x75191d7ca10ea9c36b88b169896d4f258702afa2",
+  );
   // Prefer a dedicated backend key; fall back to the funded deployer key.
   const anchorSignerPk =
     normalizePk(env.WALLET_BACKEND_PK) ?? normalizePk(env.WALLET_DEPLOYER_PK);
@@ -144,13 +155,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
 
     theGraphKey: nonEmpty(env.THE_GRAPH_KEY),
+    uniswapV3SubgraphId: nonEmpty(env.UNISWAP_V3_SUBGRAPH_ID),
     uniswapV4SubgraphId: nonEmpty(env.UNISWAP_V4_SUBGRAPH_ID),
+    camelotSubgraphId: nonEmpty(env.CAMELOT_SUBGRAPH_ID),
     coinGeckoApiKey: nonEmpty(env.COINGECKO_API_KEY),
     geminiApiKey: nonEmpty(env.GEMINI_API_KEY),
     geminiModel: nonEmpty(env.GEMINI_MODEL) ?? "gemini-3.5-flash",
 
     reportRegistryAddress: reportRegistry,
     riskEngineAddress: riskEngine,
+    swapReplayVerifierAddress: swapReplayVerifier,
     lpGuardianReportsContract: reportRegistry,
     lpGuardianRiskEngineContract: riskEngine,
 
@@ -163,5 +177,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     ipfsToken: nonEmpty(env.IPFS_TOKEN),
 
     dustThresholdUsd: Number(env.DUST_THRESHOLD_USD ?? 100),
+    swapReplayBlockWindow: Number(env.SWAP_REPLAY_BLOCK_WINDOW ?? 120_000),
+    swapReplayMaxSwaps: Math.min(1000, Number(env.SWAP_REPLAY_MAX_SWAPS ?? 1000)),
   };
 }

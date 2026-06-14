@@ -41,6 +41,9 @@ export interface V3PositionRaw {
     token0: { id: string; symbol: string; decimals: string };
     token1: { id: string; symbol: string; decimals: string };
   };
+  /** Source protocol — used to disambiguate the diagnose resolver (the same
+   *  tokenId can exist on multiple PositionManagers). Additive/optional. */
+  protocol?: "uniswap-v3" | "uniswap-v4" | "camelot";
 }
 
 export interface PositionsResponse {
