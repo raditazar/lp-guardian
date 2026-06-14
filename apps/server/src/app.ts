@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { ServerConfig } from "./config.js";
 import { errorHandler, notFoundHandler } from "./http/handlers.js";
 import { requestContext } from "./middleware/requestContext.js";
@@ -43,6 +44,15 @@ export function createApp(config: ServerConfig, services: AppServices = {}): Hon
       services.agentRunQueue,
     );
 
+  app.use(
+    "*",
+    cors({
+      origin: config.corsOrigins,
+      allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization"],
+      maxAge: 86_400,
+    }),
+  );
   app.use("*", requestContext());
   app.use("*", requestLogger());
 
