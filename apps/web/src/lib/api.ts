@@ -46,12 +46,27 @@ export interface V3PositionRaw {
   protocol?: "uniswap-v3" | "uniswap-v4" | "camelot";
 }
 
+export interface PortfolioRisk {
+  riskScoreBps: number;
+  riskTier: number; // 0=Healthy, 1=Amber, 2=Red
+  recommendedAction: number;
+  source: string;
+  metrics: {
+    totalPositions: number;
+    outOfRangePositions: number;
+    dustPositions: number;
+    correlatedExposureBps: number;
+    concentrationBps: number;
+  };
+}
+
 export interface PositionsResponse {
   address: string;
   version: number;
   source?: string;
   chainId?: number;
   positions: V3PositionRaw[];
+  portfolioRisk?: PortfolioRisk;
   portfolioRiskInput?: {
     totalPositions: string;
     outOfRangePositions: string;

@@ -4,9 +4,11 @@ import { useAccount } from "wagmi";
 import { AppHeader } from "../components/AppHeader.js";
 import { AggStat } from "../components/AggStat.js";
 import { PositionCard } from "../components/PositionCard.js";
+import { CorrelationMatrix } from "../components/CorrelationMatrix.js";
+import { RebalanceProposal } from "../components/RebalanceProposal.js";
 import { Mono } from "../design/atoms.js";
 import { shortAddr } from "../design/atoms.js";
-import { fetchPortfolioPositions, type V3PositionRaw } from "../lib/api.js";
+import { fetchPortfolioPositions, type V3PositionRaw, type PortfolioRisk } from "../lib/api.js";
 import { classifyHealth } from "../lib/health.js";
 import "../styles/atlas.css";
 
@@ -68,26 +70,56 @@ const SLOT_TONE: Record<DemoWallet["slot"], string> = {
 function aggregate(positions: V3PositionRaw[]) {
   let totalDeposited = 0;
   let totalFees = 0;
+  let totalNet = 0;
   let bleeding = 0;
   let drift = 0;
   let healthy = 0;
 
   for (const p of positions) {
-    totalDeposited += parseFloat(p.depositedToken0) + parseFloat(p.depositedToken1);
-    totalFees += parseFloat(p.collectedFeesToken0) + parseFloat(p.collectedFeesToken1);
+    const deposited = parseFloat(p.depositedToken0) + parseFloat(p.depositedToken1);
+    const fees = parseFloat(p.collectedFeesToken0) + parseFloat(p.collectedFeesToken1);
+    totalDeposited += deposited;
+    totalFees += fees;
+    totalNet += fees - deposited;
     const h = classifyHealth(p);
     if (h === "red") bleeding++;
     else if (h === "amber") drift++;
     else healthy++;
   }
 
-  return { totalDeposited, totalFees, bleeding, drift, healthy };
+  return { totalDeposited, totalFees, totalNet, bleeding, drift, healthy };
 }
 
 function fmtUsd(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}m`;
   if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}k`;
   return `$${n.toFixed(2)}`;
+}
+
+function fmtPctBps(bps: number): string {
+  return `${(bps / 100).toFixed(0)}%`;
+}
+
+function riskTierLabel(risk?: PortfolioRisk): string {
+  if (!risk) return "—";
+  if (risk.riskTier >= 2) return "Bleeding";
+  if (risk.riskTier >= 1) return "Drifting";
+  return "Healthy";
+}
+
+function riskTierTone(risk?: PortfolioRisk): "pos" | "toxic" | "bleed" | undefined {
+  if (!risk) return undefined;
+  if (risk.riskTier >= 2) return "bleed";
+  if (risk.riskTier >= 1) return "toxic";
+  return "pos";
+}
+
+function recommendedActionLabel(action?: number): string {
+  switch (action) {
+    case 2: return "Migrate / rebalance";
+    case 1: return "Review soon";
+    default: return "Hold / monitor";
+  }
 }
 
 export function Atlas() {
@@ -148,7 +180,15 @@ export function Atlas() {
             </button>
           </form>
 
-          <div className="atlas-demo-row" role="group" aria-label="Demo wallets">
+          <div className="atlas-demo-meta">
+            <span className="atlas-demo-kicker">Demo wallets</span>
+            <div className="atlas-demo-copy-wrap">
+              <div className="atlas-demo-headline">Pick a preset health state.</div>
+              <span className="atlas-demo-copy">Curated wallets that auto-fill and run Atlas instantly.</span>
+            </div>
+          </div>
+
+          <div className="atlas-demo-row" role="group" aria-label="Preset demo wallets">
             {CURATED_DEMO_WALLETS.map((w) => (
               <button
                 key={w.slot}
@@ -174,25 +214,62 @@ export function Atlas() {
 
         {/* ── Scoreboard (results only) ── */}
         {hasResults && (
-          <section className="atlas-scoreboard lp-window" aria-label="Wallet health scoreboard">
-            <div className="lp-window-bar">
-              <div className="lp-window-dots" aria-hidden>
-                <span className="lp-window-dot" style={{ background: "var(--lp-bleed)" }} />
-                <span className="lp-window-dot" style={{ background: "var(--lp-toxic)" }} />
-                <span className="lp-window-dot" style={{ background: "var(--lp-healthy)" }} />
+          <>
+            {data?.portfolioRisk && (
+              <section className="atlas-scoreboard lp-window" aria-label="Portfolio risk summary">
+                <div className="lp-window-bar">
+                  <div className="lp-window-dots" aria-hidden>
+                    <span className="lp-window-dot" style={{ background: "var(--lp-bleed)" }} />
+                    <span className="lp-window-dot" style={{ background: "var(--lp-toxic)" }} />
+                    <span className="lp-window-dot" style={{ background: "var(--lp-healthy)" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", flex: 1, alignItems: "center" }}>
+                    <span className="lp-window-title">
+                      PORTFOLIO HEALTH · {submitted ? shortAddr(submitted) : ""}
+                    </span>
+                    <button className="lp-btn-primary" style={{ padding: "4px 10px", fontSize: 10 }}>
+                      Diagnose Entire Portfolio
+                    </button>
+                  </div>
+                </div>
+                <div className="atlas-score-strip">
+                  <AggStat label="RISK TIER" value={riskTierLabel(data.portfolioRisk)} sub={recommendedActionLabel(data.portfolioRisk.recommendedAction)} tone={riskTierTone(data.portfolioRisk)} />
+                  <AggStat label="NET P&L" value={fmtUsd(stats.totalNet)} sub="fees minus deposited" tone={stats.totalNet >= 0 ? "pos" : "bleed"} />
+                  <AggStat label="CORRELATED" value={fmtPctBps(data.portfolioRisk.metrics.correlatedExposureBps)} sub="ETH cluster exposure" tone="toxic" />
+                  <AggStat label="CONCENTRATION" value={fmtPctBps(data.portfolioRisk.metrics.concentrationBps)} sub="largest position share" tone="toxic" />
+                  <AggStat label="DUST" value={String(data.portfolioRisk.metrics.dustPositions)} sub="positions under threshold" tone={data.portfolioRisk.metrics.dustPositions > 0 ? "toxic" : "pos"} isLast />
+                </div>
+              </section>
+            )}
+
+            <section className="atlas-scoreboard lp-window" aria-label="Wallet health scoreboard">
+              <div className="lp-window-bar">
+                <div className="lp-window-dots" aria-hidden>
+                  <span className="lp-window-dot" style={{ background: "var(--lp-bleed)" }} />
+                  <span className="lp-window-dot" style={{ background: "var(--lp-toxic)" }} />
+                  <span className="lp-window-dot" style={{ background: "var(--lp-healthy)" }} />
+                </div>
+                <span className="lp-window-title">
+                  POSITION MIX · {submitted ? shortAddr(submitted) : ""}
+                </span>
               </div>
-              <span className="lp-window-title">
-                WALLET HEALTH · {submitted ? shortAddr(submitted) : ""}
-              </span>
-            </div>
-            <div className="atlas-score-strip">
-              <AggStat label="DEPOSITED"    value={fmtUsd(stats.totalDeposited)} sub="token0 + token1" />
-              <AggStat label="FEES"         value={fmtUsd(stats.totalFees)}      sub="lifetime collected" tone={stats.totalFees > 0 ? "pos" : undefined} />
-              <AggStat label="HEALTHY"      value={String(stats.healthy)}        sub="in-range positions" tone="pos" />
-              <AggStat label="DRIFTING"     value={String(stats.drift)}          sub="needs review"       tone="toxic" />
-              <AggStat label="BLEEDING"     value={String(stats.bleeding)}       sub="recommend migrate"  tone="bleed" isLast />
-            </div>
-          </section>
+              <div className="atlas-score-strip">
+                <AggStat label="DEPOSITED"    value={fmtUsd(stats.totalDeposited)} sub="token0 + token1" />
+                <AggStat label="FEES"         value={fmtUsd(stats.totalFees)}      sub="lifetime collected" tone={stats.totalFees > 0 ? "pos" : undefined} />
+                <AggStat label="HEALTHY"      value={String(stats.healthy)}        sub="in-range positions" tone="pos" />
+                <AggStat label="DRIFTING"     value={String(stats.drift)}          sub="needs review"       tone="toxic" />
+                <AggStat label="BLEEDING"     value={String(stats.bleeding)}       sub="recommend migrate"  tone="bleed" isLast />
+              </div>
+            </section>
+
+            {/* Render mock UI for correlation and rebalance proposal */}
+            {data?.portfolioRisk && data.portfolioRisk.metrics.totalPositions > 1 && (
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 0.8fr) 1fr", gap: 16 }}>
+                <CorrelationMatrix />
+                <RebalanceProposal />
+              </div>
+            )}
+          </>
         )}
 
         {/* ── State branch ── */}
@@ -260,7 +337,7 @@ function AtlasIdlePanel() {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={2} size={140} bob />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
             <p>Paste a wallet.<br />I'll find the bleed.</p>
           </div>
         </div>
@@ -283,7 +360,7 @@ function AtlasLoadingPanel({ submitted }: { submitted: string }) {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={5} size={140} bob />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 320 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 320 }}>
             <p>Scanning <Mono>{shortAddr(submitted)}</Mono>…</p>
           </div>
         </div>
@@ -311,7 +388,7 @@ function AtlasErrorPanel({ message, onRetry }: { message: string; onRetry: () =>
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={8} size={140} />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 360 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 360 }}>
             <p>Lookup failed: <Mono>{message}</Mono></p>
           </div>
         </div>
@@ -342,7 +419,7 @@ function AtlasEmptyPanel() {
       <div className="lp-window-body atlas-state-panel">
         <div className="atlas-state-mascot-row">
           <Mascot n={7} size={140} />
-          <div className="lp-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
+          <div className="lp-speech-bubble atlas-speech-bubble" data-tail="tl" style={{ maxWidth: 300 }}>
             <p>Nothing staked yet.<br />Try a demo wallet above.</p>
           </div>
         </div>

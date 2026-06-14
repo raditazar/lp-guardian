@@ -111,12 +111,12 @@ export function AppHeader({ right }: Props) {
           );
         })}
         {right}
-        {/* TODO(arch): 0G Compute TEE attestation chip — revise after backend redesign for Robinhood Chain */}
+        {/* TODO(arch): TEE attestation chip */}
         <span
           className="app-header-attestation"
           title="Verdicts run on a TEE Compute provider with a broker-verifiable attestation report. See /agent for the live signer address."
         >
-          <Chip tone="cyan">0G Compute · TEE attested</Chip>
+          <Chip tone="cyan">TEE attested</Chip>
         </span>
         <ConnectButton />
       </nav>

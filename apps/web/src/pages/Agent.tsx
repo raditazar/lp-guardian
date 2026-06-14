@@ -87,8 +87,7 @@ export function Agent() {
   const { data, loading, error } = useAgentLiveState();
 
   const explorerBase = ""; // TODO(robinhood): set Robinhood Chain explorer
-  // TODO(robinhood): redeploy on Robinhood Chain — replace zero address below
-  const contractUrl  = `${explorerBase}/address/${data?.contract ?? "0x0000000000000000000000000000000000000000"}`;
+  const contractUrl  = `${explorerBase}/address/${data?.contract ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0"}`;
 
   return (
     <div className="landing-theme" style={{ minHeight: "100vh" }}>
@@ -208,7 +207,7 @@ export function Agent() {
           {/* Detail rows */}
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {[
-              { label: "CONTRACT",       value: data?.contract ?? "0x0000000000000000000000000000000000000000", href: contractUrl, mono: true },
+              { label: "CONTRACT",       value: data?.contract ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0", href: contractUrl, mono: true },
               { label: "TOKEN ID",       value: data ? `#${data.tokenId}` : "#1",           href: undefined, mono: true },
               { label: "OWNER",          value: data?.owner ?? "…",                          href: data?.owner ? `${explorerBase}/address/${data.owner}` : undefined, mono: true },
               { label: "MEMORY ROOT",    value: data?.memoryRoot ? shortHex(data.memoryRoot) : "…", href: undefined, mono: true },

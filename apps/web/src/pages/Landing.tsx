@@ -22,8 +22,8 @@ const ALL_PHASES: { n: string; name: string; label: string }[] = [
   { n: "06", name: "hook.replay (1k swaps)", label: "COMPUTED" },
   { n: "07", name: "migration.preview", label: "COMPUTED" },
   { n: "10", name: "verdict.synthesize (TEE)", label: "ESTIMATED" },
-  { n: "08", name: "report.upload (0G)", label: "VERIFIED" },
-  { n: "09", name: "anchor.0g-chain + iNFT update", label: "VERIFIED" },
+  { n: "08", name: "report.upload (Storage)", label: "VERIFIED" },
+  { n: "09", name: "anchor.robinhood-chain + iNFT update", label: "VERIFIED" },
 ];
 
 export function Landing() {
@@ -87,16 +87,6 @@ export function Landing() {
           <Mascot n={3} size={180} />
         </div>
 
-        {/* Scroll cue */}
-        <div className="lp-scroll-cue">
-          <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--lp-ink-ghost)", fontSize: 10 }}>
-            <div style={{ width: 36, height: 1, background: "var(--lp-border-mid)" }} />
-            <span style={{ fontFamily: "var(--font-mono)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              Scroll · how it works
-            </span>
-            <div style={{ width: 36, height: 1, background: "var(--lp-border-mid)" }} />
-          </div>
-        </div>
       </section>
 
       {/* ── 2 · Claims strip — three numbers, no card boxes ─────────── */}
@@ -138,20 +128,20 @@ export function Landing() {
           </div>
           <div className="lp-marquee-wrap" style={{ flex: 1 }}>
             <div className="lp-marquee-track">
-              {/* TODO(arch): 0G tech stack labels retained — revise after backend redesign for Robinhood Chain */}
+              {/* TODO(arch): tech stack labels */}
               {[
-                { name: "0G Labs", sub: "AI-native L1 — TEE compute, storage, chain" },
+                { name: "Stylus", sub: "Rust-based smart contracts" },
                 { name: "Uniswap Foundation", sub: "V3+V4 subgraphs, Trading API, Permit2" },
-                { name: "0G Chain", sub: "report anchor + agent memory" },
+                { name: "Robinhood Chain", sub: "Arbitrum Orbit L3 execution" },
                 { name: "ERC-7857", sub: "iNFT standard for embedded intelligence" },
                 { name: "MCP", sub: "@modelcontextprotocol/sdk — agent-callable tools" },
-                { name: "Arbitrum Open House London Buildathon", sub: "Arbitrum Buildathon track" },
-                { name: "0G Labs", sub: "AI-native L1 — TEE compute, storage, chain" },
+                { name: "Arbitrum", sub: "Arbitrum Open House London Buildathon" },
+                { name: "TEE", sub: "Secure enclave execution" },
                 { name: "Uniswap Foundation", sub: "V3+V4 subgraphs, Trading API, Permit2" },
-                { name: "0G Chain", sub: "report anchor + agent memory" },
+                { name: "Robinhood Chain", sub: "Arbitrum Orbit L3 execution" },
                 { name: "ERC-7857", sub: "iNFT standard for embedded intelligence" },
                 { name: "MCP", sub: "@modelcontextprotocol/sdk — agent-callable tools" },
-                { name: "Arbitrum Open House London Buildathon", sub: "Arbitrum Buildathon track" },
+                { name: "Arbitrum", sub: "Arbitrum Open House London Buildathon" },
               ].map((p, i) => (
                 <MarqueeItem key={i} name={p.name} sub={p.sub} />
               ))}
@@ -309,8 +299,8 @@ export function Landing() {
               No spinner, no black box. Every phase emits a typed event the user
               watches in real time — position resolution, IL math, regime
               classification, hook discovery, swap-by-swap replay, migration
-              preview, TEE verdict synthesis with hallucination guard, 0G
-              Storage upload, and on-chain anchoring with agent memory updates.
+              preview, TEE verdict synthesis with hallucination guard, Storage
+              upload, and on-chain anchoring with agent memory updates.
             </p>
             <div style={{ marginTop: 32 }}>
               <Mascot n={5} size={130} />
@@ -352,8 +342,8 @@ export function Landing() {
               }}
             >
               The same rootHash is recoverable through four independent surfaces:
-              the LP Guardian report API, the 0G Chain registry, the agent&apos;s
-              onchain memory cursor, and the 0G Storage blob itself. The AT-4
+              the LP Guardian report API, the Robinhood Chain registry, the agent&apos;s
+              onchain memory cursor, and the Storage blob itself. The AT-4
               hallucination guard fires <em>before</em> anchoring, so unsupported
               model claims never reach any of them.
             </p>
@@ -446,7 +436,7 @@ export function Landing() {
               >
                 {[
                   { tag: "01", title: "mintLicense — 80/20 royalty", desc: "Pay 0.1 OG for a 24 h license to invoke gated MCP tools. Owner gets 80%, treasury 20%, automatic split." },
-                  { tag: "02", title: "memoryRoot evolves per run", desc: "Each diagnose updates agents(1).memoryRoot to the new 0G Storage blob." },
+                  { tag: "02", title: "memoryRoot evolves per run", desc: "Each diagnose updates agents(1).memoryRoot to the new Storage blob." },
                   { tag: "03", title: "reputation + migrationsTriggered", desc: "Two on-chain counters move per run. recordMigration bumps when user signs." },
                   { tag: "04", title: "5 MCP product tools", desc: "portfolio_diagnose / simulate / optimize / execute / monitor exposed through MCP." },
                 ].map((c) => (
@@ -534,7 +524,7 @@ export function Landing() {
                 variant: "cobalt" as StickerVariant,
                 label: "MIGRATE",
                 title: "One signature. Three on-chain moves.",
-                desc: "Close V3 → swap → mint V4, bundled through Permit2. Report signed inside the TEE, pinned to 0G Storage, anchored on 0G Chain for audit.",
+                desc: "Close V3 → swap → mint V4, bundled through Permit2. Report signed inside the TEE, pinned to IPFS/Storage, anchored on Robinhood Chain for audit.",
               },
             ].map((c) => (
               <div key={c.n} className="lp-timeline-item">
@@ -645,7 +635,7 @@ export function Landing() {
               },
               {
                 tag: "04 · SIGNED REPORT, NOT A SCREENSHOT",
-                body: "The verdict is a blob signed by a 0G Compute TEE-attested provider, pinned on 0G Storage, anchored on 0G Chain, and mirrored into agent memory. Forwardable to a DAO. Verifiable offline by anyone with the rootHash and the registry address — no LP Guardian server in the trust path.",
+                body: "The verdict is a blob signed by a TEE-attested provider, pinned on Storage, anchored on Robinhood Chain, and mirrored into agent memory. Forwardable to a DAO. Verifiable offline by anyone with the rootHash and the registry address — no LP Guardian server in the trust path.",
               },
               {
                 tag: "05 · MEMORY, NOT CHAT HISTORY",
@@ -715,9 +705,9 @@ export function Landing() {
           <Cap>INSTRUMENT STACK</Cap>
           <div className="lp-stack-wall">
             {[
-              { name: "0G Compute", sub: "TEE · broker-attested", v: "purple" as StickerVariant, rot: -3 },
-              { name: "0G Storage", sub: "merkle rootHash anchored", v: "cobalt" as StickerVariant, rot: 2 },
-              { name: "0G Chain", sub: "LPGuardianReports + iNFT registry", v: "purple" as StickerVariant, rot: -1 },
+              { name: "TEE", sub: "Secure enclave execution", v: "purple" as StickerVariant, rot: -3 },
+              { name: "Storage", sub: "merkle rootHash anchored", v: "cobalt" as StickerVariant, rot: 2 },
+              { name: "Robinhood Chain", sub: "LPGuardianReports + iNFT registry", v: "purple" as StickerVariant, rot: -1 },
               { name: "Uniswap V3 / V4", sub: "live pools · permit2", v: "outline" as StickerVariant, rot: 3 },
               { name: "Permit2", sub: "EIP-712 signed bundle", v: "magenta" as StickerVariant, rot: -2 },
               { name: "Agent Memory", sub: "persistent report cursor", v: "outline" as StickerVariant, rot: 4 },
@@ -872,12 +862,12 @@ function ScrollPhasePanel({ phases }: { phases: typeof ALL_PHASES }) {
 
 /* ── Verification path cards ──────────────────────────────────────── */
 function VerificationPaths() {
-  // TODO(arch): 0G verification matrix labels retained — revise after backend redesign for Robinhood Chain
+  // TODO(arch): verification matrix labels retained — revise after backend redesign for Robinhood Chain
   const paths = [
     { n: "A", name: "LP Guardian REST", sub: "GET /api/report/<rootHash>", color: "var(--lp-purple)" },
-    { n: "B", name: "0G Chain registry", sub: "LPGuardianReports.reports(rootHash)", color: "var(--lp-cobalt)" },
+    { n: "B", name: "Robinhood Chain registry", sub: "LPGuardianReports.reports(rootHash)", color: "var(--lp-cobalt)" },
     { n: "C", name: "iNFT memoryRoot", sub: "agents(1).memoryRoot", color: "var(--lp-cobalt)" },
-    { n: "D", name: "0G Storage merkle", sub: "root re-derived from blob", color: "var(--lp-cobalt)" },
+    { n: "D", name: "Storage merkle", sub: "root re-derived from blob", color: "var(--lp-cobalt)" },
   ];
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);

@@ -6,11 +6,11 @@ import "../styles/landing.css";
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
-const REPO_BASE       = "https://github.com/<TODO>/lp-guardian";
+const REPO_BASE       = "https://github.com/raditazar/lp-guardian";
 const SOURCE_ARCHIVE  = `${REPO_BASE}/archive/refs/heads/main.zip`;
 const BACKEND_URL     = (import.meta.env.VITE_LPGUARDIAN_API_URL as string | undefined) ?? ""; // TODO(robinhood): set after backend deployment
-const AGENT_CONTRACT  = (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined) ?? "0x0000000000000000000000000000000000000000" /* TODO(robinhood): redeploy on Robinhood Chain */;
-const REPORTS_CONTRACT = "0x0000000000000000000000000000000000000000" /* TODO(robinhood): redeploy on Robinhood Chain */;
+const AGENT_CONTRACT  = (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined) ?? "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0";
+const REPORTS_CONTRACT = "0x9803be5349eedf7c28ac1914b743757ce043b7cc";
 const AGENT_TOKEN_ID  = (import.meta.env.VITE_LPGUARDIAN_AGENT_TOKEN_ID as string | undefined) ?? "1";
 const MAINNET_RPC     = ""; // TODO(robinhood): set Robinhood Chain RPC
 
@@ -178,19 +178,65 @@ interface ToolRow {
   description: string;
 }
 
-const CODE_MINT = `# 1. mint a 24 h license on Robinhood Chain
+const TOOLS: ToolRow[] = [
+  {
+    name: "lpguardian.ping",
+    access: "FREE",
+    price: "FREE",
+    description: "Transport liveness check. Useful for confirming the MCP server is reachable before invoking product tools.",
+  },
+  {
+    name: "lpguardian.diagnose",
+    access: "GATED",
+    price: "0.1 ETH / 24 h",
+    description: "Runs the full LP Guardian pipeline on a tokenId and returns the structured verdict, provenance, and migration context.",
+  },
+  {
+    name: "lpguardian.preflight",
+    access: "GATED",
+    price: "0.1 ETH / 24 h",
+    description: "Lightweight health check for a position. Stops before the full verdict to answer whether a deeper diagnosis is warranted.",
+  },
+  {
+    name: "lpguardian.migrate",
+    access: "GATED",
+    price: "0.1 ETH / 24 h",
+    description: "Builds the Permit2 migration payload from a diagnosed report. Prepares typed data only — never submits a swap bundle.",
+  },
+  {
+    name: "lpguardian.lookupReport",
+    access: "FREE",
+    price: "FREE",
+    description: "Fetches a persisted report by rootHash from the backend cache so other agents can inspect a prior diagnosis.",
+  },
+  {
+    name: "lpguardian.lookupReportOnChain",
+    access: "FREE",
+    price: "FREE",
+    description: "Reads LPGuardianReports directly on Robinhood Chain to verify that a given rootHash was anchored on-chain.",
+  },
+];
+
+/* ─── Code strings ───────────────────────────────────────────────────── */
+
+const CODE_MINT = `# 1. set wallet + chain vars
+export YOUR_KEY=0xYOUR_PRIVATE_KEY
+export RPC_URL=https://your-robinhood-rpc
+export WALLET_ADDRESS=0xYOUR_WALLET_ADDRESS
+
+# 2. mint a 24 h license on Robinhood Chain
 cast send ${AGENT_CONTRACT} \\
   "mintLicense(uint256,address,uint64)" \\
-  ${AGENT_TOKEN_ID} <yourAddress> $(($(date +%s) + 86400)) \\
+  ${AGENT_TOKEN_ID} $WALLET_ADDRESS $(($(date +%s) + 86400)) \\
   --value 0.1ether \\
-  --rpc-url ${MAINNET_RPC} \\
+  --rpc-url $RPC_URL \\
   --private-key $YOUR_KEY
 
-# 2. verify the license is active
+# 3. verify the license is active
 cast call ${AGENT_CONTRACT} \\
   "isLicensed(uint256,address)(bool)" \\
-  ${AGENT_TOKEN_ID} <yourAddress> \\
-  --rpc-url ${MAINNET_RPC}
+  ${AGENT_TOKEN_ID} $WALLET_ADDRESS \\
+  --rpc-url $RPC_URL
 # → true`;
 
 const CODE_SETUP = `git clone ${REPO_BASE}.git LP-Guardian
@@ -332,6 +378,24 @@ export function Developers() {
           today — hosted SSE on the roadmap.
         </p>
 
+<<<<<<< HEAD
+          {/* TODO(arch): Storage labels */}
+          <div
+            style={{
+              display: "inline-flex",
+              gap: 0,
+              border: "1.5px solid var(--lp-border)",
+              borderRadius: 3,
+              overflow: "hidden",
+              boxShadow: "3px 3px 0 var(--lp-border)",
+            }}
+          >
+            {[
+              { label: "TOOLS", value: "6 total", sub: "1 ping · 3 gated · 2 free" },
+              { label: "LICENSE", value: "0.1 ETH", sub: "24 h · 80/20 royalty" },
+              { label: "BACKEND", value: "Aristotle", sub: "Robinhood Chain + Arbitrum reads" },
+            ].map(({ label, value, sub }, i) => (
+=======
         {/* Fact strip — replaces MetricCard hero grid */}
         <div
           style={{
@@ -348,6 +412,7 @@ export function Developers() {
             { label: "LICENSE", value: "0.1 OG", sub: "24 h · 80/20 royalty" },
             { label: "BACKEND", value: "Aristotle", sub: "0G Mainnet + Ethereum reads" },
           ].map(({ label, value, sub }, i) => (
+>>>>>>> origin/main
             <div
               key={label}
               style={{

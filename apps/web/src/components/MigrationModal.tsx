@@ -90,7 +90,7 @@ export function MigrationModal({ preview, lpTokenId, onClose }: Props) {
   const handleSign = async () => {
     setSubmitted(true);
     const tokenAddress = (preview.tokenAddress ??
-      "0x0000000000000000000000000000000000000000") as `0x${string}`;
+      "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0") as `0x${string}`;
     const spender = (preview.spender ??
       "0x66a9893cc07d91d95644aedd05d03f95e1dba8af") as `0x${string}`;
     const amount = preview.amount ? BigInt(preview.amount) : 1_000_000n;

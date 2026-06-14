@@ -73,17 +73,17 @@ const PHASES = [
     accent: "var(--lp-healthy)",
     sticker: "yellow" as StickerVariant,
     stickerText: "LIVE",
-    description: "Hackathon demo on Robinhood Chain. Core diagnostic pipeline is running end-to-end with real chain data and live 0G write-paths.",
+    description: "Hackathon demo on Robinhood Chain. Core diagnostic pipeline is running end-to-end with real chain data and live write-paths.",
     items: [
       { done: true,  text: "LP NFT resolution from Uniswap subgraph" },
       { done: true,  text: "IL reconstruction from tick range + sqrtPriceX96" },
       { done: true,  text: "Pool regime classification" },
       { done: true,  text: "V4 hook discovery + swap replay (1k swaps)" },
       { done: true,  text: "Migration preview with Permit2 bundle" },
-      // TODO(arch): 0G Compute TEE — revise after backend redesign
-      { done: true,  text: "Verdict synthesis inside 0G Compute TEE" },
-      // TODO(arch): 0G Storage — revise after backend redesign
-      { done: true,  text: "Report upload to 0G Storage" },
+      // TODO(arch): TEE — revise after backend redesign
+      { done: true,  text: "Verdict synthesis inside TEE" },
+      // TODO(arch): Storage — revise after backend redesign
+      { done: true,  text: "Report upload to IPFS/Storage" },
       { done: true,  text: "On-chain anchor tx on Robinhood Chain" },
       { done: true,  text: "ERC-7857 iNFT — memoryRoot + reputation + counter" },
       { done: true,  text: "MCP server: 5 product tools + ping" },
@@ -377,7 +377,7 @@ export function Roadmap() {
           Diagnose a real position.
         </h2>
         <p style={{ margin: "0 auto 32px", maxWidth: "42ch", fontSize: 14, color: "var(--lp-ink-soft)", lineHeight: 1.6 }}>
-          {/* TODO(arch): 0G Compute/Storage labels retained — revise after backend redesign for Robinhood Chain */}
+          {/* TODO(arch): Storage labels */}
           The full pipeline is running on Robinhood Chain. Paste a tokenId or pick
           a demo wallet.
         </p>
