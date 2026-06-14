@@ -5,7 +5,7 @@ import type {
   AgentType,
   AgentTopic,
 } from "@lp-guardian/core";
-import type { Address, Hex } from "viem";
+import { keccak256, toBytes, type Address, type Hex } from "viem";
 import type { ServerConfig } from "../config.js";
 import type { FoundationRunRequest } from "../schemas/agent.js";
 import {
@@ -22,7 +22,10 @@ import { MonitorService } from "./portfolio/monitorService.js";
 import { PortfolioService } from "./portfolio/portfolioService.js";
 import type { WalletRiskInputResult } from "./portfolio/walletRiskInput.js";
 import type { AggregateRiskPipelineResult } from "./portfolio/aggregateRiskPipeline.js";
-import type { PortfolioRiskInput } from "./robinhood/riskEngine.js";
+import type {
+  PortfolioRiskInput,
+  PortfolioRiskResult,
+} from "./robinhood/riskEngine.js";
 
 export type FoundationRunMode = "mock" | "eliza";
 
@@ -99,6 +102,7 @@ interface AgentContext {
   correlationId: string;
   scan?: WalletRiskInputResult;
   diagnosis?: AggregateRiskPipelineResult;
+  optimization?: RebalanceProposalPreview;
 }
 
 interface AgentMessageProvenance {
@@ -110,6 +114,33 @@ interface AgentMessageProvenance {
     verifier?: string;
     warnings: string[];
   };
+}
+
+interface RebalanceActionPreview {
+  actionType: "hold" | "close" | "consolidate" | "rebalance" | "monitor";
+  sequence: number;
+  description: string;
+  sourceTokenId?: string;
+  estimatedGas: number;
+}
+
+interface RebalanceProposalPreview {
+  proposalHash: Hex;
+  status: "preview";
+  expiresAt: number;
+  recommendedAction: "hold" | "rebalance" | "close";
+  expectedOutcome: {
+    riskScoreBps: bigint;
+    expectedRiskReductionBps: bigint;
+    expectedRiskConcentrationBps: bigint;
+  };
+  cost: {
+    gasEstimateUSD: number;
+    slippageEstimateBps: number;
+  };
+  actions: RebalanceActionPreview[];
+  reportRoot: Hex;
+  simulationScenario: string;
 }
 
 function createId(prefix: string): string {
@@ -185,6 +216,31 @@ function riskInputFromWire(value: unknown): PortfolioRiskInput | undefined {
     dustPositions,
     correlatedExposureBps,
     concentrationBps,
+  };
+}
+
+function riskOutputFromWire(value: unknown): PortfolioRiskResult | undefined {
+  if (!isRecord(value)) return undefined;
+  const riskScoreBps = bigintFromWire(value.riskScoreBps);
+  const rawRiskTier = typeof value.riskTier === "number"
+    ? value.riskTier
+    : Number(value.riskTier);
+  const rawRecommendedAction = typeof value.recommendedAction === "number"
+    ? value.recommendedAction
+    : Number(value.recommendedAction);
+
+  if (
+    riskScoreBps === undefined ||
+    ![0, 1, 2].includes(rawRiskTier) ||
+    ![0, 1, 2].includes(rawRecommendedAction)
+  ) {
+    return undefined;
+  }
+
+  return {
+    riskScoreBps,
+    riskTier: rawRiskTier as 0 | 1 | 2,
+    recommendedAction: rawRecommendedAction as 0 | 1 | 2,
   };
 }
 
@@ -334,13 +390,14 @@ function hydrateCompletedStepContext(
     }
     case "simulate": {
       const payload = isRecord(message?.payload) ? message.payload : undefined;
-      if (!payload?.riskOutput || !payload?.reportRoot) return false;
+      const riskOutput = riskOutputFromWire(payload?.riskOutput);
+      if (!riskOutput || !payload?.reportRoot) return false;
 
       context.diagnosis = {
         report: {
           rootHash: payload.reportRoot,
           payload: {
-            riskOutput: payload.riskOutput,
+            riskOutput,
           },
         },
         attestationHash: payload.attestationHash,
@@ -348,8 +405,17 @@ function hydrateCompletedStepContext(
       } as AggregateRiskPipelineResult;
       return true;
     }
+    case "optimize": {
+      const payload = isRecord(message?.payload) ? message.payload : undefined;
+      const proposal = isRecord(payload?.rebalanceProposal)
+        ? payload.rebalanceProposal
+        : undefined;
+      if (!proposal?.proposalHash || !proposal?.reportRoot) return false;
+
+      context.optimization = proposal as unknown as RebalanceProposalPreview;
+      return true;
+    }
     case "correlate":
-    case "optimize":
     case "execute":
     case "monitor":
       return true;
@@ -387,6 +453,15 @@ function normalizeForWire(value: unknown): unknown {
   );
 }
 
+function stableStringify(value: unknown): string {
+  return JSON.stringify(normalizeForWire(value), (_key, entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+    return Object.fromEntries(
+      Object.entries(entry).sort(([left], [right]) => left.localeCompare(right)),
+    );
+  });
+}
+
 function riskActionName(value: 0 | 1 | 2): "hold" | "rebalance" | "close" {
   switch (value) {
     case 0:
@@ -396,6 +471,133 @@ function riskActionName(value: 0 | 1 | 2): "hold" | "rebalance" | "close" {
     case 2:
       return "close";
   }
+}
+
+function riskTierName(value: 0 | 1 | 2): "green" | "amber" | "red" {
+  switch (value) {
+    case 0:
+      return "green";
+    case 1:
+      return "amber";
+    case 2:
+      return "red";
+  }
+}
+
+function clampBigInt(value: bigint, min: bigint, max: bigint): bigint {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+function buildActionPreviews(
+  input: AgentOrchestrationInput,
+  riskInput: PortfolioRiskInput | undefined,
+  action: "hold" | "rebalance" | "close",
+): RebalanceActionPreview[] {
+  if (action === "hold") {
+    return [
+      {
+        actionType: "monitor",
+        sequence: 1,
+        description: "Keep current allocation and continue autonomous monitoring.",
+        estimatedGas: 0,
+      },
+    ];
+  }
+
+  const actions: RebalanceActionPreview[] = [];
+  let sequence = 1;
+  if ((riskInput?.dustPositions ?? 0n) > 0n || action === "close") {
+    actions.push({
+      actionType: "close",
+      sequence,
+      description:
+        "Close or consolidate dust LP positions once the user approves a concrete Permit2 bundle.",
+      sourceTokenId: input.tokenId,
+      estimatedGas: 180_000,
+    });
+    sequence += 1;
+  }
+
+  if ((riskInput?.outOfRangePositions ?? 0n) > 0n || action === "rebalance") {
+    actions.push({
+      actionType: "rebalance",
+      sequence,
+      description:
+        "Rebalance out-of-range liquidity into a healthier allocation preview.",
+      sourceTokenId: input.tokenId,
+      estimatedGas: 260_000,
+    });
+    sequence += 1;
+  }
+
+  if ((riskInput?.correlatedExposureBps ?? 0n) > 7_000n) {
+    actions.push({
+      actionType: "consolidate",
+      sequence,
+      description:
+        "Reduce correlated pair exposure by consolidating positions into fewer lower-risk ranges.",
+      estimatedGas: 220_000,
+    });
+  }
+
+  return actions.length > 0 ? actions : [
+    {
+      actionType: "monitor",
+      sequence: 1,
+      description: "No executable action preview was generated; keep monitoring.",
+      estimatedGas: 0,
+    },
+  ];
+}
+
+function buildRebalanceProposal(
+  input: AgentOrchestrationInput,
+  diagnosis: AggregateRiskPipelineResult,
+  riskInput: PortfolioRiskInput | undefined,
+): RebalanceProposalPreview {
+  const riskOutput = diagnosis.report.payload.riskOutput;
+  const recommendedAction = riskActionName(riskOutput.recommendedAction);
+  const riskScoreBps = riskOutput.riskScoreBps;
+  const concentrationBps = riskInput?.concentrationBps ?? 0n;
+  const expectedRiskReductionBps =
+    recommendedAction === "hold"
+      ? 0n
+      : clampBigInt(riskScoreBps / 3n, 250n, 2_500n);
+  const actions = buildActionPreviews(input, riskInput, recommendedAction);
+  const gasEstimate = actions.reduce((sum, action) => sum + action.estimatedGas, 0);
+  const draft = {
+    walletAddress: input.walletAddress,
+    tokenId: input.tokenId,
+    reportRoot: diagnosis.report.rootHash,
+    recommendedAction,
+    riskScoreBps,
+    riskTier: riskOutput.riskTier,
+    actions,
+  };
+
+  return {
+    proposalHash: keccak256(toBytes(stableStringify(draft))),
+    status: "preview",
+    expiresAt: Date.now() + 15 * 60 * 1000,
+    recommendedAction,
+    expectedOutcome: {
+      riskScoreBps,
+      expectedRiskReductionBps,
+      expectedRiskConcentrationBps:
+        recommendedAction === "hold"
+          ? concentrationBps
+          : clampBigInt(concentrationBps - expectedRiskReductionBps, 0n, 10_000n),
+    },
+    cost: {
+      gasEstimateUSD: gasEstimate === 0 ? 0 : Math.max(1, Math.round(gasEstimate / 100_000)),
+      slippageEstimateBps: recommendedAction === "hold" ? 0 : 50,
+    },
+    actions,
+    reportRoot: diagnosis.report.rootHash,
+    simulationScenario: input.scenario ?? "baseline",
+  };
 }
 
 function sequenceFor(target: AgentType): AgentType[] {
@@ -511,14 +713,23 @@ class OptimizeAgent extends PortfolioAgent {
     }
 
     const { riskOutput } = context.diagnosis.report.payload;
+    const proposal = buildRebalanceProposal(
+      context.input,
+      context.diagnosis,
+      context.scan?.riskInput,
+    );
+    context.optimization = proposal;
+
     return {
       recommendedAction: riskActionName(riskOutput.recommendedAction),
+      riskTierName: riskTierName(riskOutput.riskTier),
       riskScoreBps: riskOutput.riskScoreBps,
       riskTier: riskOutput.riskTier,
       proposalStatus: "preview",
+      rebalanceProposal: proposal,
       reportRoot: context.diagnosis.report.rootHash,
       note:
-        "OptimizeAgent currently converts the deterministic risk engine output into an approval-gated proposal preview.",
+        "OptimizeAgent generated a deterministic approval-gated rebalance proposal preview. It is not a submitted transaction bundle.",
     };
   }
 }
@@ -529,15 +740,19 @@ class ExecuteAgent extends PortfolioAgent {
   }
 
   async run(context: AgentContext): Promise<unknown> {
+    const proposal = context.optimization;
     return {
       status: context.input.userApproved ? "ready_for_execution_backend" : "waiting_for_user",
       dryRun: context.input.dryRun ?? true,
       userApproved: Boolean(context.input.userApproved),
       tokenId: context.input.tokenId,
       reportRoot: context.diagnosis?.report.rootHash,
+      proposalHash: proposal?.proposalHash,
+      proposalStatus: proposal ? "available" : "missing",
+      actions: proposal?.actions ?? [],
       note: context.input.userApproved
         ? "User approval flag is present, but real Permit2 bundle submission is not wired in this build."
-        : "Execution remains blocked until the user approves a proposal and signs the Permit2 flow.",
+        : "Execution remains blocked until the user approves the proposal and signs the Permit2 flow.",
     };
   }
 }

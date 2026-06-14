@@ -221,6 +221,124 @@ assert.equal(resumedRun.meta.steps.monitor.status, "completed");
 assert.equal(resumedRun.meta.steps.monitor.attempts, 1);
 assert.equal(resumedRun.messages.length, 1);
 
+const optimizeStore = new AgentStateStore(
+  join(".lp-guardian", `smoke-agent-optimize-${Date.now()}.json`),
+);
+const optimizeRunId = `run__optimize__${Date.now()}`;
+const optimizeCorrelationId = `correlation__optimize__${Date.now()}`;
+const optimizeStartedAt = Date.now();
+const scanMessageId = `msg__scan__${Date.now()}`;
+const correlateMessageId = `msg__correlate__${Date.now()}`;
+const simulateMessageId = `msg__simulate__${Date.now()}`;
+const reportRoot = `0x${"2".repeat(64)}`;
+const optimizeRun: StoredAgentRun = {
+  input: {
+    walletAddress,
+    targetAgent: "optimize",
+    idempotencyKey: `optimize-${idempotencyKey}`,
+  },
+  run: {
+    id: optimizeRunId,
+    status: "queued",
+    startedAt: optimizeStartedAt,
+    currentAgent: "optimize",
+    correlationId: optimizeCorrelationId,
+  },
+  messages: [
+    {
+      id: scanMessageId,
+      timestamp: optimizeStartedAt,
+      source: "scan",
+      target: "all",
+      topic: "positions.scanned",
+      correlationId: optimizeCorrelationId,
+      payload: {
+        walletAddress,
+        currentlyOwnedTokenIds: ["605313"],
+        riskInput: {
+          totalPositions: "3",
+          outOfRangePositions: "1",
+          dustPositions: "1",
+          correlatedExposureBps: "8200",
+          concentrationBps: "7600",
+        },
+        sources: [],
+      },
+    },
+    {
+      id: correlateMessageId,
+      timestamp: optimizeStartedAt,
+      source: "correlate",
+      target: "all",
+      topic: "portfolio.correlated",
+      correlationId: optimizeCorrelationId,
+      payload: {
+        correlatedExposureBps: "8200",
+      },
+    },
+    {
+      id: simulateMessageId,
+      timestamp: optimizeStartedAt,
+      source: "simulate",
+      target: "all",
+      topic: "portfolio.simulated",
+      correlationId: optimizeCorrelationId,
+      payload: {
+        scenario: "baseline",
+        riskOutput: {
+          riskScoreBps: "8100",
+          riskTier: 2,
+          recommendedAction: 1,
+        },
+        reportRoot,
+      },
+    },
+  ],
+  meta: {
+    idempotencyKey: `optimize-${idempotencyKey}`,
+    attempts: 0,
+    maxAttempts: 3,
+    steps: {
+      scan: {
+        agent: "scan",
+        status: "completed",
+        attempts: 1,
+        maxAttempts: 2,
+        outputMessageId: scanMessageId,
+      },
+      correlate: {
+        agent: "correlate",
+        status: "completed",
+        attempts: 1,
+        maxAttempts: 2,
+        outputMessageId: correlateMessageId,
+      },
+      simulate: {
+        agent: "simulate",
+        status: "completed",
+        attempts: 1,
+        maxAttempts: 2,
+        outputMessageId: simulateMessageId,
+      },
+    },
+  },
+};
+optimizeStore.putRun(optimizeRun);
+const optimizeApp = createApp(loadConfig(), {
+  agentStateStore: optimizeStore,
+});
+const optimizedRun = await waitForCompletedRun(optimizeApp, optimizeRunId);
+const optimizeMessage = optimizedRun.messages.find(
+  (message: any) => message.source === "optimize",
+);
+assert.ok(optimizeMessage);
+assert.equal(optimizeMessage.payload.rebalanceProposal.status, "preview");
+assert.equal(
+  /^0x[a-fA-F0-9]{64}$/.test(optimizeMessage.payload.rebalanceProposal.proposalHash),
+  true,
+);
+assert.equal(optimizeMessage.payload.rebalanceProposal.actions.length > 0, true);
+
 console.log(JSON.stringify({
   assertions: {
     monitorWalletStream: true,
@@ -233,6 +351,7 @@ console.log(JSON.stringify({
     deadLetterList: true,
     deadLetterStream: true,
     restartResumeSkipsCompletedStep: true,
+    optimizeProposalPreview: true,
   },
   runId: storedRun.run.id,
   correlationId: storedRun.run.correlationId,
