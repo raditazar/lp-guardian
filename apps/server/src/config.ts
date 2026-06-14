@@ -6,6 +6,7 @@ export type StorageProvider = "stub" | "ipfs";
 export interface ServerConfig {
   port: number;
   nodeEnv: string;
+  corsOrigins: string[];
   agentRuntimeProvider: "mock" | "eliza";
   strategistProvider: "mock" | "eliza" | "phala";
 
@@ -130,6 +131,16 @@ function strategistProvider(
   return "mock";
 }
 
+function list(value: string | undefined, fallback: string[]): string[] {
+  const raw = nonEmpty(value);
+  if (!raw) return fallback;
+  const values = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return values.length > 0 ? values : fallback;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const robinhoodRpc =
     nonEmpty(env.ROBINHOOD_RPC) ?? "https://rpc.testnet.chain.robinhood.com";
@@ -163,6 +174,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   return {
     port: Number(env.PORT ?? 3100),
     nodeEnv: env.NODE_ENV ?? "development",
+    corsOrigins: list(env.CORS_ORIGINS, [
+      "https://lp-guardian-web.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:3100",
+      "http://localhost:5173",
+    ]),
     agentRuntimeProvider: env.AGENT_RUNTIME === "eliza" ? "eliza" : "mock",
     strategistProvider: strategistProvider(env.STRATEGIST_PROVIDER),
 
