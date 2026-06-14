@@ -89,6 +89,9 @@ const secondBody = await json(secondEnqueue);
 assert.equal(firstBody.data.run.id, secondBody.data.run.id);
 
 const storedRun = await waitForCompletedRun(firstBody.data.run.id);
+assert.equal(storedRun.meta.steps.monitor.status, "completed");
+assert.equal(storedRun.meta.steps.monitor.attempts, 1);
+
 const messagesResponse = await app.request(
   `/agent/orchestration/messages/${storedRun.run.correlationId}`,
 );
@@ -133,6 +136,7 @@ console.log(JSON.stringify({
   assertions: {
     monitorWalletStream: true,
     idempotentEnqueue: true,
+    stepProgress: true,
     completedRunLookup: true,
     orchestrationStreamReplay: true,
     queueSnapshot: true,

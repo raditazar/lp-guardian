@@ -54,6 +54,19 @@ export interface AgentOrchestrationResult {
   messages: AgentMessage[];
 }
 
+export type AgentStepStatus = "pending" | "running" | "completed" | "failed";
+
+export interface AgentStepProgress {
+  agent: AgentType;
+  status: AgentStepStatus;
+  attempts: number;
+  maxAttempts: number;
+  startedAt?: number;
+  completedAt?: number;
+  lastError?: string;
+  outputMessageId?: string;
+}
+
 export interface StoredAgentRun extends AgentOrchestrationResult {
   input: AgentOrchestrationInput;
   meta?: {
@@ -63,6 +76,7 @@ export interface StoredAgentRun extends AgentOrchestrationResult {
     nextAttemptAt?: number;
     lastError?: string;
     deadLetter?: boolean;
+    steps?: Partial<Record<AgentType, AgentStepProgress>>;
   };
 }
 
@@ -75,6 +89,7 @@ export interface AgentStreamEvent {
 type AgentStreamListener = (event: AgentStreamEvent) => void;
 
 const DEFAULT_MAX_ATTEMPTS = 3;
+const DEFAULT_STEP_MAX_ATTEMPTS = 2;
 const RETRY_BASE_DELAY_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 30_000;
 
@@ -106,8 +121,50 @@ function retryDelayMs(attempts: number): number {
   );
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function isTerminalStatus(status: AgentRunStatus): boolean {
   return ["waiting_for_user", "completed", "failed", "cancelled"].includes(status);
+}
+
+function pendingStep(agent: AgentType): AgentStepProgress {
+  return {
+    agent,
+    status: "pending",
+    attempts: 0,
+    maxAttempts: DEFAULT_STEP_MAX_ATTEMPTS,
+  };
+}
+
+function ensureMeta(
+  storedRun: StoredAgentRun,
+  sequence: AgentType[],
+): NonNullable<StoredAgentRun["meta"]> {
+  const steps: Partial<Record<AgentType, AgentStepProgress>> = {
+    ...(storedRun.meta?.steps ?? {}),
+  };
+  storedRun.meta = {
+    idempotencyKey: storedRun.meta?.idempotencyKey ?? idempotencyKeyFor(storedRun.input),
+    attempts: storedRun.meta?.attempts ?? 0,
+    maxAttempts: storedRun.meta?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+    nextAttemptAt: storedRun.meta?.nextAttemptAt,
+    lastError: storedRun.meta?.lastError,
+    deadLetter: storedRun.meta?.deadLetter,
+    steps,
+  };
+
+  for (const agent of sequence) {
+    steps[agent] = {
+      ...pendingStep(agent),
+      ...steps[agent],
+      agent,
+      maxAttempts: steps[agent]?.maxAttempts ?? DEFAULT_STEP_MAX_ATTEMPTS,
+    };
+  }
+
+  return storedRun.meta;
 }
 
 function topicForAgent(agent: AgentType): AgentTopic {
@@ -390,6 +447,7 @@ export class AgentOrchestrator {
       nextAttemptAt: undefined,
       lastError: undefined,
       deadLetter: false,
+      steps: undefined,
     };
     this.persistRun(storedRun);
     this.queue.enqueue(storedRun.run.id);
@@ -546,21 +604,22 @@ export class AgentOrchestrator {
 
   private async executeStoredRun(storedRun: StoredAgentRun): Promise<void> {
     const targetAgent = storedRun.input.targetAgent ?? "correlate";
+    const sequence = sequenceFor(targetAgent);
     const context: AgentContext = {
       input: storedRun.input,
       correlationId: storedRun.run.correlationId,
     };
     let currentAgent = storedRun.run.currentAgent;
     let status: AgentRunStatus = "completed";
-    storedRun.meta = {
-      idempotencyKey: storedRun.meta?.idempotencyKey ?? idempotencyKeyFor(storedRun.input),
-      attempts: (storedRun.meta?.attempts ?? 0) + 1,
-      maxAttempts: storedRun.meta?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
-    };
+    const meta = ensureMeta(storedRun, sequence);
+    meta.attempts += 1;
+    meta.nextAttemptAt = undefined;
+    meta.lastError = undefined;
+    meta.deadLetter = false;
     this.persistRun(storedRun);
 
     try {
-      for (const agentType of sequenceFor(targetAgent)) {
+      for (const agentType of sequence) {
         currentAgent = agentType;
         storedRun.run = {
           ...storedRun.run,
@@ -570,16 +629,7 @@ export class AgentOrchestrator {
         this.persistRun(storedRun);
         this.emitRun(storedRun, "agent.run.running");
 
-        const payload = await this.agents[agentType].run(context);
-        this.appendMessage(storedRun, {
-          id: createId("msg"),
-          timestamp: Date.now(),
-          source: agentType,
-          target: "all",
-          topic: topicForAgent(agentType),
-          correlationId: storedRun.run.correlationId,
-          payload: normalizeForWire(payload),
-        });
+        await this.executeAgentStep(storedRun, context, agentType);
 
         if (
           agentType === "execute" &&
@@ -602,12 +652,18 @@ export class AgentOrchestrator {
         payload: {
           message,
           retryable: true,
-          attempt: storedRun.meta.attempts,
-          maxAttempts: storedRun.meta.maxAttempts,
+          attempt: storedRun.meta?.attempts ?? 0,
+          maxAttempts: storedRun.meta?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
+          step: currentAgent ?? targetAgent,
+          stepAttempts:
+            storedRun.meta?.steps?.[currentAgent ?? targetAgent]?.attempts ?? 0,
+          stepMaxAttempts:
+            storedRun.meta?.steps?.[currentAgent ?? targetAgent]?.maxAttempts ??
+            DEFAULT_STEP_MAX_ATTEMPTS,
         },
       });
       storedRun.meta = {
-        ...storedRun.meta,
+        ...ensureMeta(storedRun, sequence),
         lastError: message,
       };
     }
@@ -676,6 +732,77 @@ export class AgentOrchestrator {
         ? "agent.run.dead_lettered"
         : "agent.run.completed",
     );
+  }
+
+  private async executeAgentStep(
+    storedRun: StoredAgentRun,
+    context: AgentContext,
+    agentType: AgentType,
+  ): Promise<void> {
+    const meta = ensureMeta(storedRun, sequenceFor(storedRun.input.targetAgent ?? "correlate"));
+    let step = meta.steps?.[agentType] ?? pendingStep(agentType);
+    step = {
+      ...step,
+      agent: agentType,
+      maxAttempts: step.maxAttempts || DEFAULT_STEP_MAX_ATTEMPTS,
+    };
+    meta.steps = {
+      ...(meta.steps ?? {}),
+      [agentType]: step,
+    };
+
+    while (step.attempts < step.maxAttempts) {
+      step.status = "running";
+      step.attempts += 1;
+      step.startedAt = Date.now();
+      step.completedAt = undefined;
+      step.lastError = undefined;
+      this.persistRun(storedRun);
+
+      try {
+        const payload = await this.agents[agentType].run(context);
+        const message: AgentMessage = {
+          id: createId("msg"),
+          timestamp: Date.now(),
+          source: agentType,
+          target: "all",
+          topic: topicForAgent(agentType),
+          correlationId: storedRun.run.correlationId,
+          payload: normalizeForWire(payload),
+        };
+        step.status = "completed";
+        step.completedAt = Date.now();
+        step.outputMessageId = message.id;
+        this.appendMessage(storedRun, message);
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        step.status = "failed";
+        step.completedAt = Date.now();
+        step.lastError = message;
+        this.persistRun(storedRun);
+
+        if (step.attempts >= step.maxAttempts) {
+          throw error;
+        }
+
+        const nextAttemptAt = Date.now() + retryDelayMs(step.attempts);
+        this.emit(storedRun.run.correlationId, {
+          event: "agent.step.retry_scheduled",
+          id: `${storedRun.run.id}:${agentType}:${step.attempts}`,
+          data: {
+            runId: storedRun.run.id,
+            correlationId: storedRun.run.correlationId,
+            agent: agentType,
+            attempt: step.attempts,
+            maxAttempts: step.maxAttempts,
+            nextAttemptAt,
+            error: message,
+          },
+        });
+        await wait(Math.max(0, nextAttemptAt - Date.now()));
+      }
+    }
   }
 
   private appendMessage(storedRun: StoredAgentRun, message: AgentMessage): void {
