@@ -66,6 +66,13 @@ export interface AssembledReportPayload {
       actionName?: string;
     };
   };
+  verdict?: {
+    recommendation: string;
+    markdown: string;
+    label: "VERIFIED" | "EMULATED";
+    provider: string;
+    model: string;
+  };
 }
 
 export interface PublicReport {

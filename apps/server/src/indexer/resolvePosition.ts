@@ -193,7 +193,7 @@ function mockResolved(tokenId: string): ResolvedPosition {
   const mocks = getMockArbitrumPositions(
     "0x000000000000000000000000000000000000dead",
   );
-  const base = mocks.find((p) => p.id === tokenId) ?? mocks[1]!;
+  const base = mocks.find((p) => p.id === tokenId) ?? mocks[0]!;
   const position: V3PositionRaw = { ...base, id: tokenId };
   return {
     position,

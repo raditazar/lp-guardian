@@ -6,24 +6,26 @@ import "../styles/landing.css";
 
 /* ── Live-stream phases shown in the hero window ──────────────────── */
 const HERO_STREAM: { n: string; name: string; label: string }[] = [
-  { n: "01", name: "position.resolve", label: "VERIFIED" },
-  { n: "03", name: "il.reconstruct", label: "COMPUTED" },
-  { n: "04", name: "regime.classify", label: "ESTIMATED" },
-  { n: "05", name: "hooks.discover", label: "LABELED" },
-  { n: "06", name: "hook.replay (1k swaps)", label: "COMPUTED" },
+  { n: "01", name: "position.resolve",          label: "VERIFIED" },
+  { n: "02", name: "swap.replay",               label: "COMPUTED" },
+  { n: "03", name: "il.reconstruct",            label: "COMPUTED" },
+  { n: "04", name: "regime.classify",           label: "ESTIMATED" },
+  { n: "05", name: "hooks.discover",            label: "LABELED" },
+  { n: "06", name: "hook.replay (1k swaps)",    label: "COMPUTED" },
 ];
 
-/* ── All 9 phases shown in the HOW section ────────────────────────── */
+/* ── All 10 phases shown in the HOW section ───────────────────────── */
 const ALL_PHASES: { n: string; name: string; label: string }[] = [
-  { n: "01", name: "position.resolve", label: "VERIFIED" },
-  { n: "03", name: "il.reconstruct", label: "COMPUTED" },
-  { n: "04", name: "regime.classify", label: "ESTIMATED" },
-  { n: "05", name: "hooks.discover", label: "LABELED" },
-  { n: "06", name: "hook.replay (1k swaps)", label: "COMPUTED" },
-  { n: "07", name: "migration.preview", label: "COMPUTED" },
-  { n: "10", name: "verdict.synthesize (TEE)", label: "ESTIMATED" },
-  { n: "08", name: "report.upload (Storage)", label: "VERIFIED" },
-  { n: "09", name: "anchor.robinhood-chain + iNFT update", label: "VERIFIED" },
+  { n: "01", name: "position.resolve",                   label: "VERIFIED" },
+  { n: "02", name: "swap.replay",                        label: "COMPUTED" },
+  { n: "03", name: "il.reconstruct",                     label: "COMPUTED" },
+  { n: "04", name: "regime.classify",                    label: "ESTIMATED" },
+  { n: "05", name: "hooks.discover",                     label: "LABELED" },
+  { n: "06", name: "hook.replay (1k swaps)",             label: "COMPUTED" },
+  { n: "07", name: "migration.preview",                  label: "COMPUTED" },
+  { n: "08", name: "report.upload (IPFS)",               label: "VERIFIED" },
+  { n: "09", name: "anchor.robinhood-chain",             label: "VERIFIED" },
+  { n: "10", name: "verdict.synthesize (TEE)",           label: "VERIFIED" },
 ];
 
 export function Landing() {

@@ -8,7 +8,7 @@ import { CorrelationMatrix } from "../components/CorrelationMatrix.js";
 import { RebalanceProposal } from "../components/RebalanceProposal.js";
 import { Mono } from "../design/atoms.js";
 import { shortAddr } from "../design/atoms.js";
-import { fetchPortfolioPositions, type V3PositionRaw, type PortfolioRisk } from "../lib/api.js";
+import { fetchPositions, type V3PositionRaw, type PortfolioRisk } from "../lib/api.js";
 import { classifyHealth } from "../lib/health.js";
 import "../styles/atlas.css";
 
@@ -130,7 +130,7 @@ export function Atlas() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["positions", submitted],
-    queryFn:  () => fetchPortfolioPositions(submitted!),
+    queryFn:  () => fetchPositions(submitted!),
     enabled:  !!submitted,
   });
 
@@ -227,7 +227,12 @@ export function Atlas() {
                     <span className="lp-window-title">
                       PORTFOLIO HEALTH · {submitted ? shortAddr(submitted) : ""}
                     </span>
-                    <button className="lp-btn-primary" style={{ padding: "4px 10px", fontSize: 10 }}>
+                    <button
+                      className="lp-btn-primary"
+                      style={{ padding: "4px 10px", fontSize: 10 }}
+                      title="Portfolio-level SSE diagnosis — triggers scan → correlate → simulate pipeline across all positions"
+                      onClick={() => alert(`Portfolio-level diagnosis for ${positions.length} positions:\n\nThis triggers the full 6-agent pipeline:\n  Scan → Correlate → Simulate → Optimize → Execute\n\nPortfolio-wide SSE stream is in active development.`)}
+                    >
                       Diagnose Entire Portfolio
                     </button>
                   </div>
@@ -262,11 +267,11 @@ export function Atlas() {
               </div>
             </section>
 
-            {/* Render mock UI for correlation and rebalance proposal */}
+            {/* Correlation matrix + rebalance proposal (real data from portfolioRisk) */}
             {data?.portfolioRisk && data.portfolioRisk.metrics.totalPositions > 1 && (
               <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 0.8fr) 1fr", gap: 16 }}>
-                <CorrelationMatrix />
-                <RebalanceProposal />
+                <CorrelationMatrix positions={positions} />
+                <RebalanceProposal portfolioRisk={data.portfolioRisk} positions={positions} />
               </div>
             )}
           </>

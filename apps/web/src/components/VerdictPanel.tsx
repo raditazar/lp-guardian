@@ -7,6 +7,7 @@ export interface VerdictMeta {
   model?: string;
   provider?: string;
   stub: boolean;
+  label?: "VERIFIED" | "EMULATED" | "ESTIMATED";
 }
 
 interface Props {
@@ -19,7 +20,8 @@ function shortAddr(addr: string): string {
 }
 
 export function VerdictPanel({ verdict }: Props) {
-  const { markdown, model, provider, stub } = verdict;
+  const { markdown, model, provider, stub, label } = verdict;
+  const badgeLabel = label ?? (stub ? "EMULATED" : "ESTIMATED");
   return (
     <section className="p-5 rounded-lg border border-slate-700 bg-slate-900/50">
       <header className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
@@ -38,7 +40,7 @@ export function VerdictPanel({ verdict }: Props) {
             </p>
           )}
         </div>
-        <LabelBadge label={stub ? "EMULATED" : "ESTIMATED"} />
+        <LabelBadge label={badgeLabel} />
       </header>
 
       {stub && (

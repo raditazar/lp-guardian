@@ -13,15 +13,11 @@ import {
 // a screenshot. No-op (returns null) when the contract address isn't
 // configured at build time.
 
-const DEFAULT_AGENT_CONTRACT =
-  "0x8d21329ac9d7785333cb41e187e556a8f7b81ec0" as Address;
 const rawAgentAddress =
-  import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined;
-const AGENT_ADDRESS = (
-  !rawAgentAddress
-    ? DEFAULT_AGENT_CONTRACT
-    : rawAgentAddress
-) as Address;
+  (import.meta.env.VITE_LPGUARDIAN_AGENT_CONTRACT as string | undefined)?.trim() || "";
+// Hook is inactive when the iNFT contract address is not explicitly configured.
+const AGENT_ADDRESS = rawAgentAddress as Address;
+export const AGENT_CONTRACT_CONFIGURED = rawAgentAddress.length > 0;
 const AGENT_TOKEN_ID = BigInt(
   (import.meta.env.VITE_LPGUARDIAN_AGENT_TOKEN_ID as string | undefined) ?? "1",
 );
@@ -102,7 +98,7 @@ export function useAgentLiveState(): AgentLiveStateResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!CHAIN_RPC) return;
+    if (!CHAIN_RPC || !AGENT_CONTRACT_CONFIGURED) return;
 
     let cancelled = false;
     const client = createPublicClient({

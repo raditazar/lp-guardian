@@ -46,6 +46,13 @@ export interface AssembledReportPayload {
     priceImpactPct?: number;
     warnings: string[];
   };
+  verdict?: {
+    recommendation: string;
+    markdown: string;
+    label: "VERIFIED" | "EMULATED";
+    provider: string;
+    model: string;
+  };
 }
 
 type Status = "idle" | "loading" | "ready" | "error";

@@ -661,6 +661,13 @@ function buildPayload(i: PayloadInputs): AssembledReportPayload {
           },
         }
       : undefined,
+    verdict: {
+      recommendation: i.verdict.recommendation,
+      markdown: i.verdict.markdown,
+      label: i.verdict.label,
+      provider: i.verdict.provider,
+      model: i.verdict.model,
+    },
   };
 }
 

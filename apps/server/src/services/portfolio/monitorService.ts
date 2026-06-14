@@ -150,18 +150,18 @@ export class MonitorService {
     });
     this.alerts.push(...restored.alerts);
 
+    // Only auto-seed when ROBINHOOD_NFPM_ADDRESS is configured; without it every
+    // tick errors immediately (the scan requires a valid NFPM contract address).
     if (this.watchedWallets.size > 0 || this.states.size > 0) return;
+    if (!config.robinhoodNfpmAddress) return;
 
-    const demoWallets: Address[] = [
-      "0xfd235968e65b0990584585763f837a5b5330e6de",
-      "0x8f4daa33706d70677fd69e4e0d47e595bc820e95",
-      "0x4d3e3d1a38505185ba86a1b1f3084195d556bc2a",
-      "0x4b296808f414ab3775889fa2863e1d73f958a58e",
-      "0x90deceec188094f6f6c1ef446d843f70abfc92cb",
-      "0x7c6ef14f6890d0fda17fb8e4fb6f649f0355c3be",
-      "0x536a844ef215dd8a13a06023f24a568e4ee3cb6b",
-    ];
-    demoWallets.forEach((wallet) => this.watch(wallet));
+    // Seed the canonical Robinhood demo wallet so MonitorService has at least
+    // one live position to watch from startup.
+    const seedWallets: Address[] = [];
+    if (config.robinhoodCanonicalWalletAddress) {
+      seedWallets.push(config.robinhoodCanonicalWalletAddress as Address);
+    }
+    seedWallets.forEach((wallet) => this.watch(wallet));
   }
 
   watch(walletAddress: Address): MonitorWalletState {

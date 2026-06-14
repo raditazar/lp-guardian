@@ -13,7 +13,7 @@ const envValue = (key: string, fallback = "") => {
   return value?.trim() || fallback;
 };
 const BACKEND_URL      = envValue("VITE_LPGUARDIAN_API_URL", "http://localhost:3001");
-const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "<deploy LPGuardianAgent contract>");
+const AGENT_CONTRACT   = envValue("VITE_LPGUARDIAN_AGENT_CONTRACT", "0x... (iNFT contract — coming soon)");
 const REPORTS_CONTRACT = envValue("VITE_LPGUARDIAN_REPORTS_CONTRACT", "0x9803be5349eedf7c28ac1914b743757ce043b7cc");
 const AGENT_TOKEN_ID   = envValue("VITE_LPGUARDIAN_AGENT_TOKEN_ID", "1");
 const ROBINHOOD_RPC    = envValue("VITE_ROBINHOOD_RPC", "https://rpc.testnet.chain.robinhood.com");

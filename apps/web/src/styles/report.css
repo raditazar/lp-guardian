@@ -385,6 +385,17 @@
   color: oklch(0.56 0.15 72);
 }
 
+.report-verdict-markdown {
+  padding: 10px 14px;
+  border-top: 1px solid var(--report-border-soft);
+  font-size: 12px;
+  line-height: 1.65;
+  color: oklch(0.88 0.02 260);
+}
+.report-verdict-markdown p { margin: 0 0 6px; }
+.report-verdict-markdown ul { margin: 0 0 6px; padding-left: 16px; }
+.report-verdict-markdown strong { color: oklch(0.97 0.02 250); }
+
 .report-rail-body {
   display: grid;
   gap: 10px;

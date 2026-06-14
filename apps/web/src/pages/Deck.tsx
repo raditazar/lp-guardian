@@ -83,14 +83,15 @@ function SlideStage({
 
 const PHASES = [
   { n: "01", name: "position.resolve",           label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "02", name: "swap.replay",                label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "03", name: "il.reconstruct",             label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "04", name: "regime.classify",            label: "ESTIMATED", color: "var(--lp-toxic)" },
   { n: "05", name: "hooks.discover",             label: "LABELED",   color: "var(--lp-purple)" },
   { n: "06", name: "hook.replay (1k swaps)",     label: "COMPUTED",  color: "var(--lp-purple)" },
   { n: "07", name: "migration.preview",          label: "COMPUTED",  color: "var(--lp-purple)" },
-  { n: "10", name: "verdict.synthesize (TEE)",   label: "ESTIMATED", color: "var(--lp-toxic)" },
-  { n: "08", name: "report.upload (IPFS/Storage)", label: "VERIFIED",  color: "var(--lp-cobalt)" },
-  { n: "09", name: "anchor.robinhood-chain + iNFT",     label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "08", name: "report.upload (IPFS)",       label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "09", name: "anchor.robinhood-chain",     label: "VERIFIED",  color: "var(--lp-cobalt)" },
+  { n: "10", name: "verdict.synthesize (TEE)",   label: "VERIFIED",  color: "var(--lp-cobalt)" },
 ];
 
 /* TODO(arch): tech stack labels */

@@ -3,6 +3,7 @@ import type { ServerConfig } from "../../config.js";
 import { requireAddress } from "../robinhood/client.js";
 import {
   scanNfpmTransfersForWallet,
+  readNfpmPositionsByTokenIds,
   type NfpmPositionSnapshot,
   type TransferScanResult,
 } from "../robinhood/transferScanner.js";
@@ -190,19 +191,40 @@ export async function buildWalletRiskInputFromRobinhood(
     config.robinhoodScanChunkSize,
   );
 
-  if (rangeCount > config.robinhoodMaxScanRanges) {
+  let scan: TransferScanResult;
+
+  // Shortcut: canonical wallet with a known tokenId skips Transfer-event scan
+  // entirely. Free-tier RPCs (e.g. Alchemy) cap eth_getLogs at 10 blocks/call,
+  // making a full Transfer scan prohibitively expensive (~80k calls for the
+  // current block range). ownerOf + positions calls are single reads — fast.
+  const canonicalWallet = config.robinhoodCanonicalWalletAddress?.toLowerCase();
+  const canonicalTokenId = config.robinhoodCanonicalTokenId;
+  const isCanonicalWallet =
+    canonicalTokenId &&
+    canonicalWallet &&
+    walletAddress.toLowerCase() === canonicalWallet;
+
+  if (isCanonicalWallet) {
+    scan = await readNfpmPositionsByTokenIds(
+      client,
+      nfpmAddress,
+      walletAddress,
+      [BigInt(canonicalTokenId)],
+      latestBlock,
+    );
+  } else if (rangeCount > config.robinhoodMaxScanRanges) {
     throw new Error(
       `Robinhood NFPM scan range is too large: ${rangeCount.toString()} chunks from block ${fromBlock.toString()} to ${latestBlock.toString()} with chunk size ${config.robinhoodScanChunkSize.toString()}. Set ROBINHOOD_SCAN_FROM_BLOCK closer to the first relevant transfer or raise ROBINHOOD_MAX_SCAN_RANGES deliberately.`,
     );
+  } else {
+    scan = await scanNfpmTransfersForWallet(client, {
+      nfpmAddress,
+      walletAddress,
+      fromBlock,
+      toBlock: latestBlock,
+      chunkSize: config.robinhoodScanChunkSize,
+    });
   }
-
-  const scan = await scanNfpmTransfersForWallet(client, {
-    nfpmAddress,
-    walletAddress,
-    fromBlock,
-    toBlock: latestBlock,
-    chunkSize: config.robinhoodScanChunkSize,
-  });
   const positions = scan.positions;
   const dustPositions = positions.filter((position) => position.liquidity === 0n);
   const poolState = await readWalletPoolState(config, client, positions);

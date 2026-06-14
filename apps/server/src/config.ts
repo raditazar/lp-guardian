@@ -23,6 +23,10 @@ export interface ServerConfig {
   robinhoodScanFromBlock?: bigint;
   robinhoodScanChunkSize: bigint;
   robinhoodMaxScanRanges: bigint;
+  /** Demo/canonical wallet that owns LP positions on Robinhood Chain (for MonitorService seed & smoke tests). */
+  robinhoodCanonicalWalletAddress?: string;
+  /** Token ID owned by robinhoodCanonicalWalletAddress on the Robinhood NFPM. */
+  robinhoodCanonicalTokenId?: string;
 
   /** Backend signer used to anchor reports on-chain (0x-prefixed, validated).
    *  Falls back to the deployer key when WALLET_BACKEND_PK is empty. */
@@ -92,7 +96,10 @@ export function loadLocalEnv(startDir = process.cwd()): void {
     const separator = trimmed.indexOf("=");
     if (separator === -1) continue;
     const key = trimmed.slice(0, separator).trim();
-    const value = trimmed.slice(separator + 1).trim().replace(/^"|"$/g, "");
+    const value = trimmed
+      .slice(separator + 1)
+      .trim()
+      .replace(/^"|"$/g, "");
     if (!process.env[key]) process.env[key] = value;
   }
 }
@@ -146,13 +153,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     normalizePk(env.WALLET_BACKEND_PK) ?? normalizePk(env.WALLET_DEPLOYER_PK);
 
   return {
-    port: Number(env.PORT ?? 3001),
+    port: Number(env.PORT ?? 3100),
     nodeEnv: env.NODE_ENV ?? "development",
     agentRuntimeProvider: env.AGENT_RUNTIME === "eliza" ? "eliza" : "mock",
     strategistProvider: env.STRATEGIST_PROVIDER === "phala" ? "phala" : "mock",
 
     arbitrumRpc: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
-    arbitrumRpcUrl: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
+    arbitrumRpcUrl:
+      nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
     arbitrumChainId: Number(env.ARBITRUM_CHAIN_ID ?? 42161),
     robinhoodRpc,
     robinhoodRpcUrl: robinhoodRpc,
@@ -163,6 +171,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     robinhoodScanFromBlock,
     robinhoodScanChunkSize,
     robinhoodMaxScanRanges,
+    robinhoodCanonicalWalletAddress:
+      nonEmpty(env.ROBINHOOD_CANONICAL_WALLET_ADDRESS) ?? undefined,
+    robinhoodCanonicalTokenId:
+      nonEmpty(env.ROBINHOOD_CANONICAL_TOKEN_ID) ?? undefined,
 
     anchorSignerPk,
     walletBackendPrivateKey: anchorSignerPk ?? undefined,
@@ -182,7 +194,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     lpGuardianRiskEngineContract: riskEngine,
 
     phalaAgentContract: nonEmpty(env.PHALA_AGENT_CONTRACT) ?? undefined,
-    phalaAttestationVerifier: nonEmpty(env.PHALA_ATTESTATION_VERIFIER) ?? undefined,
+    phalaAttestationVerifier:
+      nonEmpty(env.PHALA_ATTESTATION_VERIFIER) ?? undefined,
     phalaApiUrl: nonEmpty(env.PHALA_API_URL) ?? undefined,
     phalaApiKey: nonEmpty(env.PHALA_API_KEY) ?? undefined,
 
@@ -191,6 +204,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 
     dustThresholdUsd: Number(env.DUST_THRESHOLD_USD ?? 100),
     swapReplayBlockWindow: Number(env.SWAP_REPLAY_BLOCK_WINDOW ?? 120_000),
-    swapReplayMaxSwaps: Math.min(1000, Number(env.SWAP_REPLAY_MAX_SWAPS ?? 1000)),
+    swapReplayMaxSwaps: Math.min(
+      1000,
+      Number(env.SWAP_REPLAY_MAX_SWAPS ?? 1000),
+    ),
   };
 }

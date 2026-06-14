@@ -28,6 +28,7 @@ export interface HookDiscoveryResult {
   candidates: HookCandidate[];
   topFamily: HookFamily;
   count: number;
+  source?: "subgraph" | "heuristic";
 }
 
 const FAMILY_TEXT: Record<HookFamily, string> = {
@@ -68,8 +69,9 @@ interface Props {
 }
 
 export function HooksPanel({ result }: Props) {
-  const { candidates, topFamily, count } = result;
+  const { candidates, topFamily, count, source } = result;
   const [expanded, setExpanded] = useState<string | null>(null);
+  const hookLabel = source === "subgraph" ? "VERIFIED" : "EMULATED";
 
   return (
     <section className="p-4 rounded-lg border border-slate-700 bg-slate-900/50">
@@ -77,7 +79,7 @@ export function HooksPanel({ result }: Props) {
         <h2 className="text-xs uppercase tracking-wider text-slate-500">
           V4 hook candidates
         </h2>
-        <LabelBadge label="LABELED" />
+        <LabelBadge label={hookLabel} />
       </header>
 
       {count === 0 ? (
