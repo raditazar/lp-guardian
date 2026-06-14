@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { AgentRunStatus, AgentType } from "@lp-guardian/core";
 import type { Address, Hex } from "viem";
 import { z } from "zod";
@@ -45,8 +46,52 @@ function encodeSse(event: string, data: unknown, id?: string): string {
     `event: ${event}`,
     ...(id ? [`id: ${id}`] : []),
     `data: ${JSON.stringify(data)}`,
-    "",
-  ].join("\n");
+  ].join("\n") + "\n\n";
+}
+
+function parseDeadLetterFilters(c: Context): {
+  walletAddress?: Address;
+  targetAgent?: AgentType;
+  limit: number;
+  error?: Response;
+} {
+  const walletAddress = c.req.query("walletAddress");
+  const targetAgent = c.req.query("targetAgent");
+  const limit = c.req.query("limit");
+
+  const parsedWallet = walletAddress
+    ? z.string().regex(/^0x[a-fA-F0-9]{40}$/).safeParse(walletAddress)
+    : undefined;
+  if (parsedWallet && !parsedWallet.success) {
+    return {
+      limit: 50,
+      error: c.json(fail("BAD_REQUEST", "walletAddress must be an EVM address."), 400),
+    };
+  }
+
+  const parsedAgent = targetAgent
+    ? z.enum(["scan", "correlate", "simulate", "optimize", "execute", "monitor"]).safeParse(targetAgent)
+    : undefined;
+  if (parsedAgent && !parsedAgent.success) {
+    return {
+      limit: 50,
+      error: c.json(fail("BAD_REQUEST", "targetAgent is invalid."), 400),
+    };
+  }
+
+  const parsedLimit = limit ? Number(limit) : 50;
+  if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+    return {
+      limit: 50,
+      error: c.json(fail("BAD_REQUEST", "limit must be an integer from 1 to 500."), 400),
+    };
+  }
+
+  return {
+    walletAddress: parsedWallet?.success ? parsedWallet.data as Address : undefined,
+    targetAgent: parsedAgent?.success ? parsedAgent.data as AgentType : undefined,
+    limit: parsedLimit,
+  };
 }
 
 export function createAgentOrchestrationRoute(
@@ -99,36 +144,66 @@ export function createAgentOrchestrationRoute(
   });
 
   route.get("/dead-letter", (c) => {
-    const walletAddress = c.req.query("walletAddress");
-    const targetAgent = c.req.query("targetAgent");
-    const limit = c.req.query("limit");
-
-    const parsedWallet = walletAddress
-      ? z.string().regex(/^0x[a-fA-F0-9]{40}$/).safeParse(walletAddress)
-      : undefined;
-    if (parsedWallet && !parsedWallet.success) {
-      return c.json(fail("BAD_REQUEST", "walletAddress must be an EVM address."), 400);
-    }
-
-    const parsedAgent = targetAgent
-      ? z.enum(["scan", "correlate", "simulate", "optimize", "execute", "monitor"]).safeParse(targetAgent)
-      : undefined;
-    if (parsedAgent && !parsedAgent.success) {
-      return c.json(fail("BAD_REQUEST", "targetAgent is invalid."), 400);
-    }
-
-    const parsedLimit = limit ? Number(limit) : 50;
-    if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
-      return c.json(fail("BAD_REQUEST", "limit must be an integer from 1 to 500."), 400);
-    }
+    const filter = parseDeadLetterFilters(c);
+    if (filter.error) return filter.error;
 
     return c.json(ok({
       runs: orchestrator.listDeadLetters({
-        walletAddress: parsedWallet?.success ? parsedWallet.data as Address : undefined,
-        targetAgent: parsedAgent?.success ? parsedAgent.data as AgentType : undefined,
-        limit: parsedLimit,
+        walletAddress: filter.walletAddress,
+        targetAgent: filter.targetAgent,
+        limit: filter.limit,
       }),
     }));
+  });
+
+  route.get("/dead-letter/stream", (c) => {
+    const filter = parseDeadLetterFilters(c);
+    if (filter.error) return filter.error;
+
+    const encoder = new TextEncoder();
+    let unsubscribe: (() => void) | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (event: string, data: unknown, id?: string): void => {
+          controller.enqueue(encoder.encode(encodeSse(event, data, id)));
+        };
+
+        for (const storedRun of orchestrator.listDeadLetters(filter)) {
+          send("agent.run.dead_lettered", storedRun, storedRun.run.id);
+        }
+
+        unsubscribe = orchestrator.subscribeDeadLetters((event) => {
+          const storedRun = event.id ? orchestrator.getRun(event.id) : undefined;
+          if (!storedRun?.meta?.deadLetter) return;
+          if (
+            filter.walletAddress &&
+            storedRun.input.walletAddress.toLowerCase() !==
+              filter.walletAddress.toLowerCase()
+          ) {
+            return;
+          }
+          if (
+            filter.targetAgent &&
+            (storedRun.input.targetAgent ?? "correlate") !== filter.targetAgent
+          ) {
+            return;
+          }
+
+          send(event.event, storedRun, storedRun.run.id);
+        });
+      },
+      cancel() {
+        unsubscribe?.();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+      },
+    });
   });
 
   route.post("/runs", async (c) => {

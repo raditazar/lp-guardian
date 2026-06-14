@@ -56,6 +56,24 @@ export interface MonitorSnapshot {
   updatedAt: string;
 }
 
+export type MonitorStreamEventType =
+  | "monitor.wallet.snapshot"
+  | "monitor.wallet.watched"
+  | "monitor.wallet.unwatched"
+  | "monitor.wallet.scanned"
+  | "monitor.wallet.alert"
+  | "monitor.wallet.error"
+  | "monitor.wallet.paused";
+
+export interface MonitorStreamEvent {
+  event: MonitorStreamEventType;
+  id?: string;
+  walletAddress: Address;
+  data: MonitorWalletState | MonitorAlert;
+}
+
+type MonitorStreamListener = (event: MonitorStreamEvent) => void;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -112,6 +130,7 @@ export class MonitorService {
   private readonly states = new Map<Address, MonitorWalletState>();
   private readonly alerts: MonitorAlert[] = [];
   private readonly portfolioService: PortfolioService;
+  private readonly walletListeners = new Map<Address, Set<MonitorStreamListener>>();
 
   constructor(
     private readonly config: ServerConfig,
@@ -150,6 +169,12 @@ export class MonitorService {
       const next = { ...existing, watched: true };
       this.states.set(wallet, next);
       this.persistMonitor();
+      this.emitWallet(wallet, {
+        event: "monitor.wallet.watched",
+        id: `watch__${wallet}__${Date.now()}`,
+        walletAddress: wallet,
+        data: next,
+      });
       return next;
     }
 
@@ -162,6 +187,12 @@ export class MonitorService {
     };
     this.states.set(wallet, state);
     this.persistMonitor();
+    this.emitWallet(wallet, {
+      event: "monitor.wallet.watched",
+      id: `watch__${wallet}__${Date.now()}`,
+      walletAddress: wallet,
+      data: state,
+    });
     return state;
   }
 
@@ -174,11 +205,34 @@ export class MonitorService {
     const next = { ...existing, watched: false };
     this.states.set(wallet, next);
     this.persistMonitor();
+    this.emitWallet(wallet, {
+      event: "monitor.wallet.unwatched",
+      id: `unwatch__${wallet}__${Date.now()}`,
+      walletAddress: wallet,
+      data: next,
+    });
     return next;
   }
 
   getWalletState(walletAddress: Address): MonitorWalletState | undefined {
     return this.states.get(normalizeWallet(walletAddress));
+  }
+
+  subscribeWallet(
+    walletAddress: Address,
+    listener: MonitorStreamListener,
+  ): () => void {
+    const wallet = normalizeWallet(walletAddress);
+    const listeners = this.walletListeners.get(wallet) ?? new Set();
+    listeners.add(listener);
+    this.walletListeners.set(wallet, listeners);
+
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.walletListeners.delete(wallet);
+      }
+    };
   }
 
   snapshot(): MonitorSnapshot {
@@ -280,7 +334,7 @@ export class MonitorService {
         console.log(`[MonitorService] ${wallet} is healthy.`);
       }
 
-      this.states.set(wallet, {
+      const nextState: MonitorWalletState = {
         walletAddress: wallet,
         status: issues.length > 0 ? "alert" : "healthy",
         watched: true,
@@ -291,8 +345,23 @@ export class MonitorService {
         lastAlert,
         riskInput: riskInputWire(risk),
         scan: scanWire(risk),
-      });
+      };
+      this.states.set(wallet, nextState);
       this.persistMonitor();
+      this.emitWallet(wallet, {
+        event: "monitor.wallet.scanned",
+        id: `scan__${wallet}__${Date.now()}`,
+        walletAddress: wallet,
+        data: nextState,
+      });
+      if (lastAlert && lastAlert.createdAt === checkedAt) {
+        this.emitWallet(wallet, {
+          event: "monitor.wallet.alert",
+          id: lastAlert.id,
+          walletAddress: wallet,
+          data: lastAlert,
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const previous = this.states.get(wallet);
@@ -303,7 +372,7 @@ export class MonitorService {
           : undefined;
 
       console.error(`[MonitorService] Failed to scan ${wallet}:`, error);
-      this.states.set(wallet, {
+      const nextState: MonitorWalletState = {
         ...previous,
         walletAddress: wallet,
         status: pausedUntil ? "paused" : "error",
@@ -314,8 +383,23 @@ export class MonitorService {
         failureCount,
         lastError: message,
         issues: previous?.issues ?? [],
-      });
+      };
+      this.states.set(wallet, nextState);
       this.persistMonitor();
+      this.emitWallet(wallet, {
+        event: pausedUntil ? "monitor.wallet.paused" : "monitor.wallet.error",
+        id: `error__${wallet}__${Date.now()}`,
+        walletAddress: wallet,
+        data: nextState,
+      });
+    }
+  }
+
+  private emitWallet(walletAddress: Address, event: MonitorStreamEvent): void {
+    const listeners = this.walletListeners.get(normalizeWallet(walletAddress));
+    if (!listeners) return;
+    for (const listener of listeners) {
+      listener(event);
     }
   }
 }

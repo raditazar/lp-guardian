@@ -305,6 +305,7 @@ export class AgentOrchestrator {
   private readonly messagesByCorrelationId = new Map<string, AgentMessage[]>();
   private readonly queue: string[] = [];
   private readonly streamListeners = new Map<string, Set<AgentStreamListener>>();
+  private readonly deadLetterListeners = new Set<AgentStreamListener>();
   private processing = false;
 
   constructor(
@@ -408,6 +409,13 @@ export class AgentOrchestrator {
       if (listeners.size === 0) {
         this.streamListeners.delete(correlationId);
       }
+    };
+  }
+
+  subscribeDeadLetters(listener: AgentStreamListener): () => void {
+    this.deadLetterListeners.add(listener);
+    return () => {
+      this.deadLetterListeners.delete(listener);
     };
   }
 
@@ -677,17 +685,27 @@ export class AgentOrchestrator {
   }
 
   private emitRun(storedRun: StoredAgentRun, event: string): void {
-    this.emit(storedRun.run.correlationId, {
+    const streamEvent = {
       event,
       id: storedRun.run.id,
       data: storedRun.run,
-    });
+    };
+    this.emit(storedRun.run.correlationId, streamEvent);
+    if (event === "agent.run.dead_lettered") {
+      this.emitDeadLetter(streamEvent);
+    }
   }
 
   private emit(correlationId: string, event: AgentStreamEvent): void {
     const listeners = this.streamListeners.get(correlationId);
     if (!listeners) return;
     for (const listener of listeners) {
+      listener(event);
+    }
+  }
+
+  private emitDeadLetter(event: AgentStreamEvent): void {
+    for (const listener of this.deadLetterListeners) {
       listener(event);
     }
   }
