@@ -7,7 +7,7 @@ export interface ServerConfig {
   port: number;
   nodeEnv: string;
   agentRuntimeProvider: "mock" | "eliza";
-  strategistProvider: "mock" | "phala";
+  strategistProvider: "mock" | "eliza" | "phala";
 
   // --- Chains ---
   arbitrumRpc: string;
@@ -122,6 +122,14 @@ function address(value: string | undefined, fallback: string): `0x${string}` {
   return raw as `0x${string}`;
 }
 
+function strategistProvider(
+  value: string | undefined,
+): ServerConfig["strategistProvider"] {
+  if (value === "eliza") return "eliza";
+  if (value === "phala") return "phala";
+  return "mock";
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const robinhoodRpc =
     nonEmpty(env.ROBINHOOD_RPC) ?? "https://rpc.testnet.chain.robinhood.com";
@@ -156,7 +164,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     port: Number(env.PORT ?? 3100),
     nodeEnv: env.NODE_ENV ?? "development",
     agentRuntimeProvider: env.AGENT_RUNTIME === "eliza" ? "eliza" : "mock",
-    strategistProvider: env.STRATEGIST_PROVIDER === "phala" ? "phala" : "mock",
+    strategistProvider: strategistProvider(env.STRATEGIST_PROVIDER),
 
     arbitrumRpc: nonEmpty(env.ARBITRUM_RPC) ?? "https://arb1.arbitrum.io/rpc",
     arbitrumRpcUrl:

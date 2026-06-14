@@ -4,7 +4,7 @@ import { loadConfig, loadLocalEnv } from "../config.js";
 
 loadLocalEnv();
 process.env.AGENT_RUNTIME = "eliza";
-process.env.STRATEGIST_PROVIDER = "mock";
+process.env.STRATEGIST_PROVIDER = "eliza";
 process.env.GEMINI_API_KEY = "";
 process.env.GEMINI_MODEL = "gemini-1.5-flash";
 
