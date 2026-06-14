@@ -160,5 +160,5 @@ function readModelName(runtime: ElizaRuntime, value: unknown): string {
     | undefined;
   return typeof settings?.model === "string" && settings.model.length > 0
     ? settings.model
-    : "gemini-3.5-flash";
+    : "gemini-1.5-flash";
 }
