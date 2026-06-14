@@ -35,6 +35,19 @@ function toInput(value: z.infer<typeof orchestrationRunSchema>): AgentOrchestrat
   };
 }
 
+function isTerminalStatus(status: AgentRunStatus): boolean {
+  return ["waiting_for_user", "completed", "failed", "cancelled"].includes(status);
+}
+
+function encodeSse(event: string, data: unknown, id?: string): string {
+  return [
+    `event: ${event}`,
+    ...(id ? [`id: ${id}`] : []),
+    `data: ${JSON.stringify(data)}`,
+    "",
+  ].join("\n");
+}
+
 export function createAgentOrchestrationRoute(
   orchestrator: AgentOrchestrator,
 ): Hono {
@@ -84,6 +97,24 @@ export function createAgentOrchestrationRoute(
     }));
   });
 
+  route.post("/runs", async (c) => {
+    const body = await c.req.json().catch(() => undefined);
+    const parsed = orchestrationRunSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return c.json(
+        fail(
+          "INVALID_AGENT_ORCHESTRATION_REQUEST",
+          "Invalid agent orchestration request",
+          parsed.error.issues,
+        ),
+        400,
+      );
+    }
+
+    return c.json(ok(orchestrator.enqueue(toInput(parsed.data))), 202);
+  });
+
   route.post("/run", async (c) => {
     const body = await c.req.json().catch(() => undefined);
     const parsed = orchestrationRunSchema.safeParse(body);
@@ -120,25 +151,50 @@ export function createAgentOrchestrationRoute(
   });
 
   route.get("/stream/:correlationId", (c) => {
-    const messages = orchestrator.getMessages(c.req.param("correlationId"));
-    const body = [
-      ...messages.map((message) => {
-        return [
-          `event: ${message.topic}`,
-          `id: ${message.id}`,
-          `data: ${JSON.stringify(message)}`,
-          "",
-        ].join("\n");
-      }),
-      "event: stream.complete",
-      `data: ${JSON.stringify({ correlationId: c.req.param("correlationId") })}`,
-      "",
-    ].join("\n");
+    const correlationId = c.req.param("correlationId");
+    const encoder = new TextEncoder();
+    let unsubscribe: (() => void) | undefined;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (event: string, data: unknown, id?: string): void => {
+          controller.enqueue(encoder.encode(encodeSse(event, data, id)));
+        };
 
-    return new Response(body, {
+        const existingRun = orchestrator.getRunByCorrelationId(correlationId);
+        if (existingRun) send("agent.run.snapshot", existingRun.run, existingRun.run.id);
+
+        for (const message of orchestrator.getMessages(correlationId)) {
+          send(message.topic, message, message.id);
+        }
+
+        if (existingRun && isTerminalStatus(existingRun.run.status)) {
+          send("stream.complete", { correlationId });
+          controller.close();
+          return;
+        }
+
+        unsubscribe = orchestrator.subscribe(correlationId, (event) => {
+          send(event.event, event.data, event.id);
+          if (
+            event.event === "agent.run.completed" ||
+            event.event === "agent.run.failed"
+          ) {
+            send("stream.complete", { correlationId });
+            unsubscribe?.();
+            controller.close();
+          }
+        });
+      },
+      cancel() {
+        unsubscribe?.();
+      },
+    });
+
+    return new Response(stream, {
       headers: {
         "content-type": "text/event-stream",
         "cache-control": "no-cache",
+        connection: "keep-alive",
       },
     });
   });

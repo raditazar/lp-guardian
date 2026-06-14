@@ -48,6 +48,14 @@ export interface StoredAgentRun extends AgentOrchestrationResult {
   input: AgentOrchestrationInput;
 }
 
+export interface AgentStreamEvent {
+  event: string;
+  id?: string;
+  data: unknown;
+}
+
+type AgentStreamListener = (event: AgentStreamEvent) => void;
+
 interface AgentContext {
   input: AgentOrchestrationInput;
   correlationId: string;
@@ -261,6 +269,9 @@ export class AgentOrchestrator {
   private readonly agents: Record<AgentType, PortfolioAgent>;
   private readonly runs = new Map<string, StoredAgentRun>();
   private readonly messagesByCorrelationId = new Map<string, AgentMessage[]>();
+  private readonly queue: string[] = [];
+  private readonly streamListeners = new Map<string, Set<AgentStreamListener>>();
+  private processing = false;
 
   constructor(
     config: ServerConfig,
@@ -278,12 +289,22 @@ export class AgentOrchestrator {
     };
 
     for (const storedRun of this.stateStore.listRuns()) {
+      if (storedRun.run.status === "queued" || storedRun.run.status === "running") {
+        storedRun.run = {
+          ...storedRun.run,
+          status: "queued",
+          completedAt: undefined,
+        };
+        this.queue.push(storedRun.run.id);
+        this.stateStore.putRun(storedRun);
+      }
       this.runs.set(storedRun.run.id, storedRun);
       this.messagesByCorrelationId.set(
         storedRun.run.correlationId,
         storedRun.messages,
       );
     }
+    this.processQueue();
   }
 
   listRuns(filter: ListRunsFilter = {}): StoredAgentRun[] {
@@ -294,6 +315,12 @@ export class AgentOrchestrator {
     return this.runs.get(runId) ?? this.stateStore.getRun(runId);
   }
 
+  getRunByCorrelationId(correlationId: string): StoredAgentRun | undefined {
+    return this.listRuns().find(
+      (entry) => entry.run.correlationId === correlationId,
+    );
+  }
+
   getMessages(correlationId: string): AgentMessage[] {
     return (
       this.messagesByCorrelationId.get(correlationId) ??
@@ -301,47 +328,154 @@ export class AgentOrchestrator {
     );
   }
 
+  subscribe(
+    correlationId: string,
+    listener: AgentStreamListener,
+  ): () => void {
+    const listeners = this.streamListeners.get(correlationId) ?? new Set();
+    listeners.add(listener);
+    this.streamListeners.set(correlationId, listeners);
+
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.streamListeners.delete(correlationId);
+      }
+    };
+  }
+
+  enqueue(input: AgentOrchestrationInput): AgentOrchestrationResult {
+    const startedAt = Date.now();
+    const targetAgent = input.targetAgent ?? "correlate";
+    const run: AgentRun = {
+      id: createId("run"),
+      status: "queued",
+      startedAt,
+      currentAgent: targetAgent,
+      correlationId: createId("correlation"),
+    };
+    const storedRun: StoredAgentRun = {
+      input,
+      run,
+      messages: [],
+    };
+
+    this.persistRun(storedRun);
+    this.queue.push(run.id);
+    this.emitRun(storedRun, "agent.run.queued");
+    this.processQueue();
+
+    return {
+      run,
+      messages: [],
+    };
+  }
+
   async run(input: AgentOrchestrationInput): Promise<AgentOrchestrationResult> {
     const startedAt = Date.now();
-    const runId = createId("run");
-    const correlationId = createId("correlation");
     const targetAgent = input.targetAgent ?? "correlate";
-    const context: AgentContext = { input, correlationId };
-    const messages: AgentMessage[] = [];
-    let currentAgent: AgentType | undefined;
+    const storedRun: StoredAgentRun = {
+      input,
+      messages: [],
+      run: {
+        id: createId("run"),
+        status: "running",
+        startedAt,
+        currentAgent: targetAgent,
+        correlationId: createId("correlation"),
+      },
+    };
+
+    await this.executeStoredRun(storedRun);
+    return {
+      run: storedRun.run,
+      messages: storedRun.messages,
+    };
+  }
+
+  private processQueue(): void {
+    if (this.processing) return;
+    this.processing = true;
+
+    setTimeout(() => {
+      this.drainQueue().catch((error: unknown) => {
+        console.error(`[AgentOrchestrator] Queue drain failed: ${String(error)}`);
+      });
+    }, 0);
+  }
+
+  private async drainQueue(): Promise<void> {
+    try {
+      while (this.queue.length > 0) {
+        const runId = this.queue.shift();
+        if (!runId) continue;
+
+        const storedRun = this.getRun(runId);
+        if (!storedRun || storedRun.run.status !== "queued") continue;
+
+        storedRun.run = {
+          ...storedRun.run,
+          status: "running",
+          completedAt: undefined,
+        };
+        this.persistRun(storedRun);
+        this.emitRun(storedRun, "agent.run.running");
+        await this.executeStoredRun(storedRun);
+      }
+    } finally {
+      this.processing = false;
+      if (this.queue.length > 0) this.processQueue();
+    }
+  }
+
+  private async executeStoredRun(storedRun: StoredAgentRun): Promise<void> {
+    const targetAgent = storedRun.input.targetAgent ?? "correlate";
+    const context: AgentContext = {
+      input: storedRun.input,
+      correlationId: storedRun.run.correlationId,
+    };
+    let currentAgent = storedRun.run.currentAgent;
     let status: AgentRunStatus = "completed";
 
     try {
       for (const agentType of sequenceFor(targetAgent)) {
         currentAgent = agentType;
+        storedRun.run = {
+          ...storedRun.run,
+          status: "running",
+          currentAgent,
+        };
+        this.persistRun(storedRun);
+        this.emitRun(storedRun, "agent.run.running");
+
         const payload = await this.agents[agentType].run(context);
-        messages.push({
+        this.appendMessage(storedRun, {
           id: createId("msg"),
           timestamp: Date.now(),
           source: agentType,
           target: "all",
           topic: topicForAgent(agentType),
-          correlationId,
+          correlationId: storedRun.run.correlationId,
           payload: normalizeForWire(payload),
         });
 
         if (
           agentType === "execute" &&
-          !input.userApproved &&
-          !(input.dryRun === false)
+          !storedRun.input.userApproved &&
+          !(storedRun.input.dryRun === false)
         ) {
           status = "waiting_for_user";
         }
       }
     } catch (error) {
       status = "failed";
-      messages.push({
+      this.appendMessage(storedRun, {
         id: createId("msg"),
         timestamp: Date.now(),
         source: currentAgent ?? targetAgent,
         target: "all",
         topic: "agent.failed",
-        correlationId,
+        correlationId: storedRun.run.correlationId,
         payload: {
           message: error instanceof Error ? error.message : String(error),
           retryable: true,
@@ -349,13 +483,11 @@ export class AgentOrchestrator {
       });
     }
 
-    const run: AgentRun = {
-      id: runId,
+    storedRun.run = {
+      ...storedRun.run,
       status,
-      startedAt,
       completedAt: Date.now(),
       currentAgent,
-      correlationId,
       error:
         status === "failed"
           ? {
@@ -366,13 +498,46 @@ export class AgentOrchestrator {
             }
           : undefined,
     };
+    this.persistRun(storedRun);
+    this.emitRun(
+      storedRun,
+      status === "failed" ? "agent.run.failed" : "agent.run.completed",
+    );
+  }
 
-    const result = { run, messages };
-    const storedRun = { ...result, input };
-    this.runs.set(run.id, storedRun);
-    this.messagesByCorrelationId.set(correlationId, messages);
+  private appendMessage(storedRun: StoredAgentRun, message: AgentMessage): void {
+    storedRun.messages.push(message);
+    this.persistRun(storedRun);
+    this.emit(storedRun.run.correlationId, {
+      event: message.topic,
+      id: message.id,
+      data: message,
+    });
+  }
+
+  private persistRun(storedRun: StoredAgentRun): void {
+    this.runs.set(storedRun.run.id, storedRun);
+    this.messagesByCorrelationId.set(
+      storedRun.run.correlationId,
+      storedRun.messages,
+    );
     this.stateStore.putRun(storedRun);
-    return result;
+  }
+
+  private emitRun(storedRun: StoredAgentRun, event: string): void {
+    this.emit(storedRun.run.correlationId, {
+      event,
+      id: storedRun.run.id,
+      data: storedRun.run,
+    });
+  }
+
+  private emit(correlationId: string, event: AgentStreamEvent): void {
+    const listeners = this.streamListeners.get(correlationId);
+    if (!listeners) return;
+    for (const listener of listeners) {
+      listener(event);
+    }
   }
 }
 
